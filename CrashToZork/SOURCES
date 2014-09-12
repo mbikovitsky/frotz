@@ -1,0 +1,4 @@
+TARGETNAME      =   CrashToZork
+TARGETTYPE      =   DRIVER
+
+SOURCES         =   driver.c
