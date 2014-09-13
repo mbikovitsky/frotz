@@ -83,6 +83,10 @@ void _cdecl memmgr_init();
 //
 void* _cdecl memmgr_alloc(ulong nbytes);
 
+// 'realloc' clone
+//
+void* _cdecl memmgr_realloc(void* ap, ulong nbytes);
+
 // 'free' clone
 //
 void _cdecl memmgr_free(void* ap);

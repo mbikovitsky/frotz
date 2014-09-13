@@ -198,6 +198,29 @@ void* _cdecl memmgr_alloc(ulong nbytes)
 }
 
 
+void* _cdecl memmgr_realloc(void* ap, ulong nbytes)
+{
+	void* new_block = 0;
+
+	if (0 == nbytes)
+	{
+		memmgr_free(ap);
+		return 0;
+	}
+
+	new_block = memmgr_alloc(nbytes);
+	if (0 == new_block)
+	{
+		return 0;
+	}
+	
+	memcpy(new_block, ap, nbytes);
+	memmgr_free(ap);
+
+	return new_block;
+}
+
+
 // Scans the free list, starting at freep, looking the the place to insert the 
 // free block. This is either between two existing blocks or at the end of the
 // list. In any case, if the block being freed is adjacent to either neighbor,

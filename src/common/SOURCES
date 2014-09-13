@@ -3,7 +3,10 @@ TARGETTYPE      =   DRIVER_LIBRARY
 
 TARGETPATH      =   lib
 
-C_DEFINES       =   $(C_DEFINES) /Dmalloc=memmgr_alloc /Dfree=memmgr_free
+C_DEFINES       =   $(C_DEFINES)                  \
+                    /Dmalloc=memmgr_alloc         \
+                    /Dfree=memmgr_free            \
+                    /Drealloc=memmgr_realloc      \
 
 SOURCES         =   buffer.c \
                     fastmem.c \
