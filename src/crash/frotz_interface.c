@@ -20,6 +20,10 @@ Environment:
 // Headers
 //
 
+#include <ntddk.h>
+
+#include <stdarg.h>
+
 #include "..\common\frotz.h"
 
 
@@ -59,8 +63,26 @@ void os_erase_area(int top, int left, int bottom, int right, int win)
 {
 }
 
-void os_fatal(const char * format, ...)
+void
+os_fatal(
+	const char * format,
+	...
+)
 {
+	va_list vaArgs = NULL;
+	
+	va_start(vaArgs, format);
+	vDbgPrintEx(
+		DPFLTR_DEFAULT_ID,
+		DPFLTR_ERROR_LEVEL,
+		format,
+		vaArgs);
+	va_end(vaArgs);
+
+	//
+	// Carpe diem.
+	//
+	ExRaiseStatus(STATUS_UNSUCCESSFUL);
 }
 
 void os_finish_with_sample()
@@ -91,10 +113,6 @@ int os_picture_data(int num, int *height, int *width)
 }
 
 void os_prepare_sample(int a)
-{
-}
-
-void os_process_arguments(int argc, char *argv[])
 {
 }
 
@@ -161,6 +179,12 @@ int os_string_width(const zchar *zstring)
 
 void os_init_setup(void)
 {
+	RtlSecureZeroMemory(&f_setup, sizeof(f_setup));
+	f_setup.undo_slots = MAX_UNDO_SLOTS;
+	f_setup.script_cols = 80;
+	f_setup.save_quetzal = 1;
+	f_setup.sound = 1;
+	f_setup.err_report_mode = ERR_DEFAULT_REPORT_MODE;
 }
 
 int os_speech_output(const zchar *zstring)

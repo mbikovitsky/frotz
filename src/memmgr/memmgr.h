@@ -63,8 +63,6 @@
 //    for single thread/task applications.
 // 
 
-#define DEBUG_MEMMGR_SUPPORT_STATS 1
-
 #define POOL_SIZE 8 * 1024
 #define MIN_POOL_ALLOC_QUANTAS 16
 
