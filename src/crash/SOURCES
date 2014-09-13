@@ -1,4 +1,7 @@
 TARGETNAME      =   CrashToZork
 TARGETTYPE      =   DRIVER
 
+TARGETPATH      =   bin
+
 SOURCES         =   driver.c
+TARGETLIBS      =   ..\common\lib\*\FrotzCommon.lib

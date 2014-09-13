@@ -1,0 +1,25 @@
+TARGETNAME      =   FrotzCommon
+TARGETTYPE      =   DRIVER_LIBRARY
+
+TARGETPATH      =   lib
+
+SOURCES         =   buffer.c \
+                    fastmem.c \
+                    files.c \
+                    getopt.c \
+                    hotkey.c \
+                    input.c \
+                    main.c \
+                    math.c \
+                    object.c \
+                    process.c \
+                    random.c \
+                    redirect.c \
+                    screen.c \
+                    sound.c \
+                    stream.c \
+                    table.c \
+                    text.c \
+                    variable.c \
+                    quetzal.c \
+                    err.c
