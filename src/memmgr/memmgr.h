@@ -63,13 +63,8 @@
 //    for single thread/task applications.
 // 
 
-#define POOL_SIZE 8 * 1024
+#define POOL_SIZE 1 * 1024 * 1024
 #define MIN_POOL_ALLOC_QUANTAS 16
-
-
-typedef unsigned char byte;
-typedef unsigned long ulong;
-
 
 
 // Initialize the memory manager. This function should be called
@@ -79,11 +74,11 @@ void _cdecl memmgr_init();
 
 // 'malloc' clone
 //
-void* _cdecl memmgr_alloc(ulong nbytes);
+void* _cdecl memmgr_alloc(size_t nbytes);
 
 // 'realloc' clone
 //
-void* _cdecl memmgr_realloc(void* ap, ulong nbytes);
+void* _cdecl memmgr_realloc(void* ap, size_t nbytes);
 
 // 'free' clone
 //

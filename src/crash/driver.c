@@ -21,6 +21,9 @@ Environment:
 
 #include <ntddk.h>
 
+#include "..\memfile\memfile.h"
+#include "..\memmgr\memmgr.h"
+
 
 //
 // Constants
@@ -166,6 +169,9 @@ Arguments:
 		return;
 	}
 
+	memmgr_init();
+	MemInit(memmgr_alloc, memmgr_free, NULL);
+
 	try
 	{
 		(VOID)main(0, NULL);
@@ -174,6 +180,6 @@ Arguments:
 	{
 		DbgPrint("\nA fatal error has occurred in the interpreter\n");
 		DbgPrint("and an exception was raised.\n");
-		DbgPrint("Don't worry, though - your system is wrecked anyway :)\n")
+		DbgPrint("Don't worry, though - your system is wrecked anyway :)\n");
 	}
 }

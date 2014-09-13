@@ -21,10 +21,12 @@ Environment:
 //
 
 #include <ntddk.h>
+#include <windef.h>
 
 #include <stdarg.h>
 
 #include "..\common\frotz.h"
+#include "..\memfile\memfile.h"
 
 
 //
@@ -32,6 +34,9 @@ Environment:
 //
 
 f_setup_t f_setup = {0};
+
+extern BYTE   StoryData[];
+extern SIZE_T StorySize;
 
 
 //
@@ -192,7 +197,8 @@ int os_speech_output(const zchar *zstring)
 	return 0;
 }
 
-FILE* os_load_story(void)
+FILE *
+os_load_story(void)
 {
-	return 0;
+	return MemCreateFromBuffer(StoryData, StorySize);
 }

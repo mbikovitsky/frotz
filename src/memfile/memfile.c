@@ -423,9 +423,9 @@ Return Value:
 
 --*/
 {
-	PVOID     pvBuffer  = NULL;
-	size_t    cbBuffer  = 0;
-	PMEM_FILE ptMemFile = NULL;
+	PVOID    pvBuffer  = NULL;
+	size_t   cbBuffer  = 0;
+	FILE   * ptMemFile = NULL;
 
 	MemResolver(Filename, Mode, &pvBuffer, &cbBuffer);
 	if (NULL == pvBuffer)
@@ -433,14 +433,43 @@ Return Value:
 		return NULL;
 	}
 
+	return MemCreateFromBuffer(pvBuffer, cbBuffer);
+}
+
+FILE *
+__cdecl
+MemCreateFromBuffer(
+	__in void   * Buffer,
+	__in size_t   Size
+)
+/*++
+
+Routine Description:
+
+	Creates a MEM_FILE from a buffer.
+    
+Arguments:
+
+	Buffer - The buffer to use when creating the MEM_FILE.
+
+	Size - Size of the buffer in bytes.
+
+Return Value:
+
+	FILE * (Cast from PMEM_FILE)
+
+--*/
+{
+	PMEM_FILE ptMemFile = NULL;
+
 	ptMemFile = MemAllocator(sizeof(*ptMemFile));
 	if (NULL == ptMemFile)
 	{
 		return NULL;
 	}
 
-	ptMemFile->pcBuffer     = pvBuffer;
-	ptMemFile->cbBuffer     = cbBuffer;
+	ptMemFile->pcBuffer     = Buffer;
+	ptMemFile->cbBuffer     = Size;
 	ptMemFile->pcCurrentPos = ptMemFile->pcBuffer;
 
 	return (FILE *)ptMemFile;

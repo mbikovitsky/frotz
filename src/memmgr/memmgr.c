@@ -8,7 +8,8 @@
 #include <stdio.h>
 #include "memmgr.h"
 
-typedef ulong Align;
+typedef unsigned long Align;
+typedef unsigned char byte;
 
 union mem_header_union
 {
@@ -20,7 +21,7 @@ union mem_header_union
 
         // Size of the block (in quantas of sizeof(mem_header_t))
         //
-        ulong size; 
+        size_t size; 
     } s;
 
     // Used to align headers in memory to a boundary
@@ -41,7 +42,7 @@ static mem_header_t* freep = 0;
 // Static pool for new allocations
 //
 static byte pool[POOL_SIZE] = {0};
-static ulong pool_free_pos = 0;
+static size_t pool_free_pos = 0;
 
 
 void _cdecl memmgr_init()
@@ -99,9 +100,9 @@ void _cdecl memmgr_print_stats()
 }
 
 
-static mem_header_t* get_mem_from_pool(ulong nquantas)
+static mem_header_t* get_mem_from_pool(size_t nquantas)
 {
-    ulong total_req_size;
+    size_t total_req_size;
 
     mem_header_t* h;
 
@@ -134,7 +135,7 @@ static mem_header_t* get_mem_from_pool(ulong nquantas)
 // The pointer returned to the user points to the free space within the block,
 // which begins one quanta after the header.
 //
-void* _cdecl memmgr_alloc(ulong nbytes)
+void* _cdecl memmgr_alloc(size_t nbytes)
 {
     mem_header_t* p;
     mem_header_t* prevp;
@@ -143,7 +144,7 @@ void* _cdecl memmgr_alloc(ulong nbytes)
     // the requested bytes, plus the header. The -1 and +1 are there to make sure
     // that if nbytes is a multiple of nquantas, we don't allocate too much
     //
-    ulong nquantas = (nbytes + sizeof(mem_header_t) - 1) / sizeof(mem_header_t) + 1;
+    size_t nquantas = (nbytes + sizeof(mem_header_t) - 1) / sizeof(mem_header_t) + 1;
 
     // First alloc call, and no free list yet ? Use 'base' for an initial
     // denegerate block of size 0, which points to itself
@@ -198,7 +199,7 @@ void* _cdecl memmgr_alloc(ulong nbytes)
 }
 
 
-void* _cdecl memmgr_realloc(void* ap, ulong nbytes)
+void* _cdecl memmgr_realloc(void* ap, size_t nbytes)
 {
 	void* new_block = 0;
 

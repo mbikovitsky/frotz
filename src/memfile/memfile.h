@@ -17,6 +17,8 @@ Environment:
 
 --*/
 
+#pragma once
+
 //
 // Headers
 //
@@ -130,4 +132,11 @@ __cdecl
 MemOpen(
 	__in_z const char * Filename,
 	__in_z const char * Mode
+);
+
+FILE *
+__cdecl
+MemCreateFromBuffer(
+	__in void   * Buffer,
+	__in size_t   Size
 );
