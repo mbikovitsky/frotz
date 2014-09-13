@@ -398,3 +398,50 @@ Return Value:
 
 	return EOF;
 }
+
+FILE *
+__cdecl
+MemOpen(
+	__in_z const char * Filename,
+	__in_z const char * Mode
+)
+/*++
+
+Routine Description:
+
+	fopen implementation over a MEM_FILE.
+    
+Arguments:
+
+	Filename - File name.
+
+	Mode - Kind of access that's enabled.
+
+Return Value:
+
+	FILE * (Cast from PMEM_FILE)
+
+--*/
+{
+	PVOID     pvBuffer  = NULL;
+	size_t    cbBuffer  = 0;
+	PMEM_FILE ptMemFile = NULL;
+
+	MemResolver(Filename, Mode, &pvBuffer, &cbBuffer);
+	if (NULL == pvBuffer)
+	{
+		return NULL;
+	}
+
+	ptMemFile = MemAllocator(sizeof(*ptMemFile));
+	if (NULL == ptMemFile)
+	{
+		return NULL;
+	}
+
+	ptMemFile->pcBuffer     = pvBuffer;
+	ptMemFile->cbBuffer     = cbBuffer;
+	ptMemFile->pcCurrentPos = ptMemFile->pcBuffer;
+
+	return (FILE *)ptMemFile;
+}

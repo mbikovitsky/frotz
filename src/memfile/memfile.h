@@ -36,9 +36,11 @@ typedef void (__cdecl * PFN_DEALLOCATOR)(
 	__inout_opt void * Memory
 );
 
-typedef void * (__cdecl * PFN_RESOLVER)(
-	__in_z const char * Filename,
-	__in_z const char * Mode
+typedef void (__cdecl * PFN_RESOLVER)(
+	__in_z      const char *  Filename,
+	__in_z      const char *  Mode,
+	__deref_out void       ** Buffer,
+	__out       size_t     *  Size
 );
 
 
@@ -121,4 +123,11 @@ __cdecl
 MemUngetC(
 	__in    int    Char,
 	__inout FILE * File
+);
+
+FILE *
+__cdecl
+MemOpen(
+	__in_z const char * Filename,
+	__in_z const char * Mode
 );

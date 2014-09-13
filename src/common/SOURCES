@@ -15,7 +15,8 @@ C_DEFINES       =   $(C_DEFINES)                  \
                     /Dfclose=MemClose             \
                     /Dferror=MemError             \
                     /Dfwrite=MemWrite             \
-                    /Dungetc=MemUngetC
+                    /Dungetc=MemUngetC            \
+                    /Dfopen=MemOpen
 
 SOURCES         =   buffer.c \
                     fastmem.c \
