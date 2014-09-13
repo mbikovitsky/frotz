@@ -7,6 +7,15 @@ C_DEFINES       =   $(C_DEFINES)                  \
                     /Dmalloc=memmgr_alloc         \
                     /Dfree=memmgr_free            \
                     /Drealloc=memmgr_realloc      \
+                    /Dfread=MemRead               \
+                    /Dfgetc=MemGetC               \
+                    /Dfputc=MemPutC               \
+                    /Dftell=MemTell               \
+                    /Dfseek=MemSeek               \
+                    /Dfclose=MemClose             \
+                    /Dferror=MemError             \
+                    /Dfwrite=MemWrite             \
+                    /Dungetc=MemUngetC
 
 SOURCES         =   buffer.c \
                     fastmem.c \
