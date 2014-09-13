@@ -1,1 +1,1 @@
-DIRS = memmgr common crash
+DIRS = memmgr memfile common crash

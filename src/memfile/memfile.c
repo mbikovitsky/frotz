@@ -3,14 +3,11 @@ Copyright (c) 2014 Michael Bikovitsky
 
 Module Name:
 
-	file.c
+	memfile.c
 
 Abstract: 
 
-	Contains implementation of C file I/O functions
-	over memory buffers.
-
-	Currently DOES NOT support text mode.
+	MemFile implementation.
 
 Environment:
 
@@ -22,10 +19,10 @@ Environment:
 // Headers
 //
 
-#include <wdm.h>
+#include <windef.h>
 #include <stdio.h>
 
-#include "..\memmgr\memmgr.h"
+#include "memfile.h"
 
 
 //
@@ -34,15 +31,61 @@ Environment:
 
 typedef struct _MEM_FILE {
 
-    PCHAR  pcBuffer;
-	PCHAR  pcCurrentPos;
+    PBYTE  pcBuffer;
+	PBYTE  pcCurrentPos;
 	SIZE_T cbBuffer;
     
 } MEM_FILE, *PMEM_FILE;
 
 
 //
-// Functions
+// Globals
+//
+
+static PFN_ALLOCATOR   MemAllocator   = NULL;
+static PFN_DEALLOCATOR MemDeallocator = NULL;
+static PFN_RESOLVER    MemResolver    = NULL;
+
+
+//
+// Initialization functions
+//
+
+void
+__cdecl
+MemInit(
+	__in PFN_ALLOCATOR   Allocator,
+	__in PFN_DEALLOCATOR Deallocator,
+	__in PFN_RESOLVER    Resolver
+)
+/*++
+
+Routine Description:
+
+	Initializes the module's global state
+    
+Arguments:
+
+	Allocator - Allocation function
+
+	Deallocator - Deallocation function
+
+	Resolver - Name resolver
+
+Return Value:
+
+	void
+
+--*/
+{
+	MemAllocator = Allocator;
+	MemDeallocator = Deallocator;
+	MemResolver = Resolver;
+}
+
+
+//
+// I/O functions
 //
 
 size_t
@@ -266,7 +309,7 @@ Return Value:
 
 --*/
 {
-	memmgr_free(File);
+	MemDeallocator(File);
 	
 	return 0;
 }
