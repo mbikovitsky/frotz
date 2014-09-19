@@ -26,19 +26,11 @@ Environment:
 
 
 //
-// Constants
-//
-
-#define MAGIC ("frobozz")
-
-
-//
 // Globals
 //
 
 KBUGCHECK_CALLBACK_RECORD CallbackRecord     = {0};
 BOOLEAN                   CallbackRegistered = FALSE;
-CHAR                      InputBuffer[256]   = {'\0'};
 
 
 //
@@ -150,6 +142,8 @@ Arguments:
 
 --*/
 {
+	CHAR acResponse[2] = {'\0'};
+
 	UNREFERENCED_PARAMETER(Buffer);
 	UNREFERENCED_PARAMETER(Length);
 
@@ -158,15 +152,21 @@ Arguments:
 		return;
 	}
 
-	DbgPrint("Input buffer is at: %p\n", InputBuffer);
-	DbgPrint("If you don't want to play, just continue execution.\n");
-	DbgPrint("Otherwise, put the string '%s' into the buffer and continue execution.\n", MAGIC);
-
-	DbgBreakPoint();
-
-	if (0 != strcmp(InputBuffer, MAGIC))
+	while (TRUE)
 	{
-		return;
+		DbgPrompt(
+			"Would you like to play a game? (y/n) ",
+			acResponse,
+			ARRAYSIZE(acResponse));
+
+		if ('Y' == acResponse[0] || 'y' == acResponse[0])
+		{
+			break;
+		}
+		else if ('N' == acResponse[0] || 'n' == acResponse[0])
+		{
+			return;
+		}
 	}
 
 	memmgr_init();
