@@ -49,7 +49,7 @@ static PSTR g_apszLatin1ToAscii[] = {
 	"th", "n"  , "o" , "o" , "o"  , "o" , "oe", ":", "o" , "u" , "u", "u" , "ue" , "y"  , "th" , "y"
 };
 
-static CHAR  g_acScreen[SCREEN_ROWS][SCREEN_COLS] = {'\0'};
+static CHAR  g_acScreen[SCREEN_ROWS][SCREEN_COLS] = {' '};
 static DWORD g_nRow                                = 0;
 static DWORD g_nColumn                             = 0;
 
@@ -195,12 +195,73 @@ os_init_screen(VOID)
 
 VOID
 os_set_cursor(
-	INT iRow,
-	INT iColumn
+	INT nRow,
+	INT nColumn
 )
 {
-	g_nRow    = iRow - 1;
-	g_nColumn = iColumn - 1;
+	g_nRow    = nRow - 1;
+	g_nColumn = nColumn - 1;
+}
+
+VOID
+os_erase_area(
+	INT iTop,
+	INT iLeft,
+	INT iBottom,
+	INT iRight,
+	INT nWin
+)
+{
+	DWORD nRow    = 0;
+	DWORD nColumn = 0;
+
+	UNREFERENCED_PARAMETER(nWin);
+
+	for (nRow = iTop - 1; nRow < (DWORD)iBottom; ++nRow)
+	{
+		for (nColumn = iLeft - 1; nColumn < (DWORD)iRight; ++nColumn)
+		{
+			g_acScreen[nRow][nColumn] = ' ';
+		}
+	}
+}
+
+VOID
+os_scroll_area(
+	INT iTop,
+	INT iLeft,
+	INT iBottom,
+	INT iRight,
+	INT nUnits
+)
+{
+	DWORD nRow    = 0;
+	DWORD nColumn = 0;
+
+	if (0 < nUnits)
+	{
+		for (nRow = iTop - 1; nRow < (DWORD)(iBottom - nUnits); ++nRow)
+		{
+			for (nColumn = iLeft - 1; nColumn < (DWORD)iRight; ++nColumn)
+			{
+				g_acScreen[nRow][nColumn] = g_acScreen[nRow + nUnits][nColumn];
+			}
+		}
+
+		os_erase_area(iBottom - nUnits + 1, iLeft, iBottom, iRight, -1);
+	}
+	else if (0 > nUnits)
+	{
+		for (nRow = iBottom - 1; nRow > (DWORD)(iTop - nUnits); --nRow)
+		{
+			for (nColumn = iLeft - 1; nColumn < (DWORD)iRight; ++nColumn)
+			{
+				g_acScreen[nRow][nColumn] = g_acScreen[nRow + nUnits][nColumn];
+			}
+		}
+
+		os_erase_area(iTop, iLeft, iTop - nUnits - 1, iRight, -1);
+	}
 }
 
 VOID
@@ -214,11 +275,6 @@ dump_screen(VOID)
 
 	for (nRow = 0; nRow < h_screen_rows; ++nRow)
 	{
-		for (nColumn = 0; nColumn < h_screen_cols; ++nColumn)
-		{
-			DbgPrint("%c", g_acScreen[nRow][nColumn]);
-		}
-		
-		DbgPrint("\n");
+		DbgPrint("%.*s\n", h_screen_cols, g_acScreen[nRow]);
 	}
 }

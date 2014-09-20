@@ -57,9 +57,7 @@ INT  os_picture_data (INT num, PINT piHeight, PINT piWidth) { return 0; }
 // Screen
 //
 
-VOID os_reset_screen (VOID)                                                {}
-VOID os_erase_area   (INT top, INT left, INT bottom, INT right, INT win)   {}
-VOID os_scroll_area  (INT top, INT left, INT bottom, INT right, INT units) {}
+VOID os_reset_screen (VOID) {}
 
 //
 // Game
