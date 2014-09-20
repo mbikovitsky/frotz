@@ -29,8 +29,8 @@ Environment:
 // Globals
 //
 
-KBUGCHECK_CALLBACK_RECORD CallbackRecord     = {0};
-BOOLEAN                   CallbackRegistered = FALSE;
+KBUGCHECK_CALLBACK_RECORD g_tCallbackRecord     = {0};
+BOOLEAN                   g_bCallbackRegistered = FALSE;
 
 
 //
@@ -53,8 +53,8 @@ KBUGCHECK_CALLBACK_ROUTINE BugCheckCallback;
 
 NTSTATUS
 DriverEntry(
-	__in PDRIVER_OBJECT  DriverObject,
-	__in PUNICODE_STRING RegistryPath
+	__in PDRIVER_OBJECT  ptDriverObject,
+	__in PUNICODE_STRING ptRegistryPath
 )
 /*++
 
@@ -76,15 +76,15 @@ Return Value:
 
 --*/
 {
-	UNREFERENCED_PARAMETER(RegistryPath);
+	UNREFERENCED_PARAMETER(ptRegistryPath);
 
 	PAGED_CODE();
 
-	DriverObject->DriverUnload = Unload;
+	ptDriverObject->DriverUnload = Unload;
 
-	KeInitializeCallbackRecord(&CallbackRecord);
-	CallbackRegistered = KeRegisterBugCheckCallback(
-		&CallbackRecord,
+	KeInitializeCallbackRecord(&g_tCallbackRecord);
+	g_bCallbackRegistered = KeRegisterBugCheckCallback(
+		&g_tCallbackRecord,
 		BugCheckCallback,
 		NULL,
 		0,
@@ -95,7 +95,7 @@ Return Value:
 
 VOID
 Unload(
-	__in PDRIVER_OBJECT DriverObject
+	__in PDRIVER_OBJECT ptDriverObject
 )
 /*++
 
@@ -110,21 +110,21 @@ Arguments:
 
 --*/
 {
-	UNREFERENCED_PARAMETER(DriverObject);
+	UNREFERENCED_PARAMETER(ptDriverObject);
 
 	PAGED_CODE();
 
-	if (CallbackRegistered)
+	if (g_bCallbackRegistered)
 	{
-		KeDeregisterBugCheckCallback(&CallbackRecord);
-		CallbackRegistered = FALSE;
+		KeDeregisterBugCheckCallback(&g_tCallbackRecord);
+		g_bCallbackRegistered = FALSE;
 	}
 }
 
 VOID
 BugCheckCallback(
-	__in_opt PVOID Buffer,
-	__in     ULONG Length
+	__in_opt PVOID pvBuffer,
+	__in     ULONG ulLength
 )
 /*++
 
@@ -144,8 +144,8 @@ Arguments:
 {
 	CHAR acResponse[2] = {'\0'};
 
-	UNREFERENCED_PARAMETER(Buffer);
-	UNREFERENCED_PARAMETER(Length);
+	UNREFERENCED_PARAMETER(pvBuffer);
+	UNREFERENCED_PARAMETER(ulLength);
 
 	if (KD_DEBUGGER_NOT_PRESENT)
 	{

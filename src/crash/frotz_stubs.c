@@ -19,6 +19,9 @@ Environment:
 // Headers
 //
 
+#include <ntddk.h>
+#include <windef.h>
+
 #include "..\common\frotz.h"
 
 
@@ -26,42 +29,42 @@ Environment:
 // Effects
 //
 
-void os_set_colour(int foreground, int background) {}
-int os_peek_colour(void) { return 0; }
-void os_set_text_style(int style) {}
-void os_set_font(int font) {}
-int os_font_data(int font, int *height, int *width) { return 0; }
+VOID os_set_colour     (INT iForeground, INT iBackground)       {}
+INT  os_peek_colour    (VOID)                                   { return 0; }
+VOID os_set_text_style (INT iStyle)                             {}
+VOID os_set_font       (INT iFont)                              {}
+INT  os_font_data      (INT iFont, PINT piHeight, PINT piWidth) { return 0; }
 
 //
 // Sound
 //
 
-void os_prepare_sample(int a) {}
-void os_start_sample(int a, int b, int c, zword d) {}
-void os_stop_sample() {}
-void os_finish_with_sample() {}
-void os_beep(int volume) {}
-int os_speech_output(const zchar *zstring) { return 0; }
+VOID os_prepare_sample     (INT a)                        {}
+VOID os_start_sample       (INT a, INT b, INT c, zword d) {}
+VOID os_stop_sample        ()                             {}
+VOID os_finish_with_sample ()                             {}
+VOID os_beep               (INT iVolume)                  {}
+INT  os_speech_output      (CONST zchar * pszString)      { return 0; }
 
 //
 // Pictures
 //
 
-void os_draw_picture(int num, int y, int x) {}
-int os_picture_data(int num, int *height, int *width) { return 0; }
+VOID os_draw_picture (INT num, INT y, INT x)                {}
+INT  os_picture_data (INT num, PINT piHeight, PINT piWidth) { return 0; }
 
 //
 // Screen
 //
 
-void os_reset_screen(void) {}
-void os_erase_area(int top, int left, int bottom, int right, int win) {}
-void os_scroll_area(int top, int left, int bottom, int right, int units) {}
+VOID os_reset_screen (VOID)                                                {}
+VOID os_erase_area   (INT top, INT left, INT bottom, INT right, INT win)   {}
+VOID os_scroll_area  (INT top, INT left, INT bottom, INT right, INT units) {}
 
 //
 // Game
 //
 
-void os_process_arguments(int argc, char *argv[]) {}
-void os_restart_game(int stage) {}
-void os_more_prompt(void) {}
+VOID os_process_arguments (INT iArgc, PSTR apszArgv[]) {}
+VOID os_restart_game      (INT iStage)                 {}
+VOID os_more_prompt       (VOID)                       {}

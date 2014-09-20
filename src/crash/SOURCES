@@ -3,7 +3,7 @@ TARGETTYPE      =   DRIVER
 
 TARGETPATH      =   bin
 
-SOURCES         =   driver.c frotz_interface.c frotz_stubs.c story.c
+SOURCES         =   driver.c frotz_output.c frotz_interface.c frotz_stubs.c story.c
 TARGETLIBS      =   ..\common\lib\*\FrotzCommon.lib     \
                     ..\memmgr\lib\*\memmgr.lib          \
                     ..\memfile\lib\*\memfile.lib
