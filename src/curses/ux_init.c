@@ -1,7 +1,5 @@
 /*
  * ux_init.c - Unix interface, initialisation
- *	Galen Hazelwood <galenh@micron.net>
- *	David Griffith <dgriffi@cs.csubak.edu>
  *
  * This file is part of Frotz.
  *
@@ -17,10 +15,14 @@
  *
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA
+ * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
+ * Or visit http://www.fsf.org/
  */
 
 #define __UNIX_PORT_FILE
+
+/* For the MACOS port, get the _DARWIN_C_SOURCE define */
+#include "../common/defs.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -30,11 +32,9 @@
 
 #include <unistd.h>
 #include <ctype.h>
-#include <signal.h>
 #include <libgen.h>
 
-/* We will use our own private getopt functions. */
-#include "getopt.h"
+#include "ux_defines.h"
 
 #ifdef USE_NCURSES_H
 #include <ncurses.h>
@@ -49,31 +49,89 @@
 #include "ux_frotz.h"
 #include "ux_blorb.h"
 
-f_setup_t f_setup;
-u_setup_t u_setup;
+#ifdef USE_UTF8
+#include <locale.h>
+#endif
 
+extern f_setup_t f_setup;
+extern z_header_t z_header;
+
+volatile sig_atomic_t terminal_resized = 0;
+
+static void sigwinch_handler(int);
 #define INFORMATION "\
 An interpreter for all Infocom and other Z-Machine games.\n\
-Complies with standard 1.0 of Graham Nelson's specification.\n\
 \n\
 Syntax: frotz [options] story-file\n\
-  -a   watch attribute setting  \t -O   watch object locating\n\
-  -A   watch attribute testing  \t -p   plain ASCII output only\n\
-  -b # background color         \t -P   alter piracy opcode\n\
-  -c # context lines            \t -q   quiet (disable sound effects)\n\
-  -d   disable color            \t -Q   use old-style save format\n\
-  -e   enable sound             \t -r # right margin\n\
-  -f # foreground color         \t -s # random number seed value\n\
-  -F   Force color mode         \t -S # transcript width\n\
-  -h # screen height            \t -t   set Tandy bit\n\
-  -i   ignore fatal errors      \t -u # slots for multiple undo\n\
-  -l # left margin              \t -w # screen width\n\
-  -o   watch object movement    \t -x   expand abbreviations g/x/z"
+  -a   watch attribute setting    \t -O   watch object locating\n\
+  -A   watch attribute testing    \t -p   plain ASCII output only\n\
+  -b <colorname> background color \t -P   alter piracy opcode\n\
+  -c # context lines              \t -q   quiet (disable sound effects)\n\
+  -d   disable color              \t -r # right margin\n\
+  -e   enable sound               \t -R <path> restricted read/write\n\
+  -f <colorname> foreground color \t -s # random number seed value\n\
+  -F   Force color mode           \t -S # transcript width\n\
+  -h # text height                \t -t   set Tandy bit\n\
+  -i   ignore fatal errors        \t -u # slots for multiple undo\n\
+  -I # interpreter number         \t -v   show version information\n\
+  -l # left margin                \t -w # text width\n\
+  -L <file> load this save file   \t -x   expand abbreviations g/x/z\n\
+  -o   watch object movement      \t -Z # error checking (see below)\n"
+
+#define INFO2 "\
+Error checking: 0 none, 1 first only (default), 2 all, 3 exit after any error.\n\
+For more options and explanations, please read the manual page.\n"
+
 
 /*
 char stripped_story_name[FILENAME_MAX+1];
 char semi_stripped_story_name[FILENAME_MAX+1];
 */
+
+extern u_setup_t u_setup;
+
+/* static void sigwinch_handler(int); */
+static void sigint_handler(int);
+/* static void redraw(void); */
+
+static void	print_version(void);
+static int	getconfig(char *);
+static int	getbool(char *);
+static int	getcolor(char *);
+static int	geterrmode(char *);
+static FILE	*pathopen(const char *, const char *, const char *);
+
+
+static void print_c_string (const char *s)
+{
+	zchar c;
+
+	while ((c = *s++) != 0)
+		os_display_char (c);
+} /* print_c_string */
+
+
+/*
+ * os_warn
+ *
+ * Display a warning message and continue with the game.
+ *
+ */
+void os_warn (const char *s, ...)
+{
+	if (u_setup.curses_active) {
+		/* Solaris 2.6's cc complains if the below cast is missing */
+		print_c_string("\n\n");
+		os_beep(BEEP_HIGH);
+		os_set_text_style(BOLDFACE_STYLE);
+		print_c_string("Warning: ");
+		os_set_text_style(0);
+		print_c_string(s);
+		print_c_string("\n");
+		new_line();
+	}
+} /* os_warn */
+
 
 /*
  * os_fatal
@@ -81,76 +139,77 @@ char semi_stripped_story_name[FILENAME_MAX+1];
  * Display error message and exit program.
  *
  */
-
 void os_fatal (const char *s, ...)
 {
+	if (u_setup.curses_active) {
+		/* Solaris 2.6's cc complains if the below cast is missing */
+		print_c_string("\n\n");
+		os_beep(BEEP_HIGH);
+		os_set_text_style(BOLDFACE_STYLE);
+		print_c_string("Fatal error: ");
+		os_set_text_style(0);
+		print_c_string(s);
+		print_c_string("\n");
+		new_line();
+		if (f_setup.ignore_errors) {
+			print_c_string("Continuing anyway...");
+			new_line();
+			scrollok(stdscr, TRUE);
+			scroll(stdscr);
+			flush_buffer();
+			refresh();
+			return;
+		} else {
+			os_reset_screen();
+			ux_blorb_stop();
+			os_quit(EXIT_FAILURE);
+		}
+	}
 
-    if (u_setup.curses_active) {
-      /* Solaris 2.6's cc complains if the below cast is missing */
-      os_display_string((zchar *)"\n\n");
-      os_beep(BEEP_HIGH);
-      os_set_text_style(BOLDFACE_STYLE);
-      os_display_string((zchar *)"Fatal error: ");
-      os_set_text_style(0);
-      os_display_string((zchar *)s);
-      os_display_string((zchar *)"\n");
-      new_line();
-      os_reset_screen();
-      exit(1);
-    }
+	fputs ("\nFatal error: ", stderr);
+	fputs (s, stderr);
+	if (f_setup.ignore_errors) {
+		fputs ("\n\rContinuing anyway", stderr);
+		return;
+	}
 
-    fputs ("\nFatal error: ", stderr);
-    fputs (s, stderr);
-    fputs ("\n\n", stderr);
+	fputs ("\n\n", stderr);
 
-    exit (1);
-
-}/* os_fatal */
+	os_quit (EXIT_FAILURE);
+} /* os_fatal */
 
 /* extern char script_name[]; */
 /* extern char command_name[]; */
 /* extern char save_name[];*/
 /*extern char auxilary_name[];*/
 
+
 /*
  * os_process_arguments
  *
- * Handle command line switches. Some variables may be set to activate
- * special features of Frotz:
- *
- *     option_attribute_assignment
- *     option_attribute_testing
- *     option_context_lines
- *     option_object_locating
- *     option_object_movement
- *     option_left_margin
- *     option_right_margin
- *     option_ignore_errors
- *     option_piracy
- *     option_undo_slots
- *     option_expand_abbreviations
- *     option_script_cols
- *
- * The global pointer "story_name" is set to the story file name.
- *
+ * Handle command line switches.
+ * Some variables may be set to activate special features of Frotz.
  *
  */
-
 void os_process_arguments (int argc, char *argv[])
 {
-    int c, i;
+	int c;
+	char *p = NULL;
+/*
+ * FIXME: Remove this after K&R treatment
+ * FIXME: put this back before committing merge fixes
+ *    char *blorb_ext = NULL;
+ */
+	char *home;
+	char configfile[FILENAME_MAX + 1];
 
-    char *p = NULL;
-    char *blorb_ext = NULL;
+	zoptarg = NULL;
 
-    char *home;
-    char configfile[FILENAME_MAX + 1];
-
-#ifndef WIN32
-    if ((getuid() == 0) || (geteuid() == 0)) {
-        printf("I won't run as root!\n");
-        exit(1);
-    }
+#if !defined(WIN32) && !defined(__HAIKU__)
+	if ((getuid() == 0) || (geteuid() == 0)) {
+		printf("I won't run as root!\n");
+		os_quit(EXIT_FAILURE);
+	}
 #endif
 
 #ifdef WIN32
@@ -159,10 +218,11 @@ void os_process_arguments (int argc, char *argv[])
 #define HOMEDIR "HOME"
 #endif
 
-    if ((home = getenv(HOMEDIR)) == NULL) {
-        printf("Hard drive on fire!\n");
-        exit(1);
-    }
+	if ((home = getenv(HOMEDIR)) == NULL) {
+		printf("Hard drive on fire!\n");
+		os_quit(EXIT_FAILURE);
+	}
+
 
 /*
  * It doesn't look like Frotz can reliably be resized given its current
@@ -174,186 +234,182 @@ void os_process_arguments (int argc, char *argv[])
  *
  */
 
-/*
-    if (signal(SIGWINCH, SIG_IGN) != SIG_IGN)
+
+/*	if (signal(SIGWINCH, SIG_IGN) != SIG_IGN) */
 	signal(SIGWINCH, sigwinch_handler);
-*/
 
-    if (signal(SIGINT, SIG_IGN) != SIG_IGN)
-	signal(SIGINT, sigint_handler);
+	if (signal(SIGINT, SIG_IGN) != SIG_IGN)
+		signal(SIGINT, sigint_handler);
 
-    /* First check for a "$HOME/.frotzrc". */
-    /* If not found, look for CONFIG_DIR/frotz.conf */
-    /* $HOME/.frotzrc overrides CONFIG_DIR/frotz.conf */
+	if (signal(SIGTTIN, SIG_IGN) != SIG_IGN)
+		signal(SIGTTIN, SIG_IGN);
 
-    strncpy(configfile, home, FILENAME_MAX);
-    strncat(configfile, "/", 1);
+	if (signal(SIGTTOU, SIG_IGN) != SIG_IGN)
+		signal(SIGTTOU, SIG_IGN);
 
-    strncat(configfile, USER_CONFIG, strlen(USER_CONFIG));
-    if (!getconfig(configfile)) {
-	strncpy(configfile, CONFIG_DIR, FILENAME_MAX);
-	strncat(configfile, "/", 1);	/* added by DJP */
-	strncat(configfile, MASTER_CONFIG, FILENAME_MAX-10);
-	getconfig(configfile);  /* we're not concerned if this fails */
-    }
+	/* First check for a "$HOME/.frotzrc". */
+	/* If not found, look for CONFIG_DIR/frotz.conf */
+	/* $HOME/.frotzrc overrides CONFIG_DIR/frotz.conf */
 
-    /* Parse the options */
+	strncpy(configfile, home, FILENAME_MAX);
+	strncat(configfile, "/", 2);
 
-    do {
-	c = getopt(argc, argv, "aAb:c:def:Fh:il:oOpPQqr:s:S:tu:w:xZ:");
-	switch(c) {
-	  case 'a': f_setup.attribute_assignment = 1; break;
-	  case 'A': f_setup.attribute_testing = 1; break;
-
-	  case 'b': u_setup.background_color = atoi(optarg);
-		u_setup.force_color = 1;
-		u_setup.disable_color = 0;
-		if ((u_setup.background_color < 2) ||
-		    (u_setup.background_color > 9))
-		  u_setup.background_color = -1;
-		break;
-	  case 'c': f_setup.context_lines = atoi(optarg); break;
-	  case 'd': u_setup.disable_color = 1; break;
-	  case 'e': f_setup.sound = 1; break;
-	  case 'f': u_setup.foreground_color = getcolor(optarg);
-		    u_setup.force_color = 1;
-		    u_setup.disable_color = 0;
-	            if ((u_setup.foreground_color < 2) ||
-			(u_setup.foreground_color > 9))
-			u_setup.foreground_color = -1;
-		    break;
-
-
-	  case 'F': u_setup.force_color = 1;
-		    u_setup.disable_color = 0;
-		    break;
-          case 'h': u_setup.screen_height = atoi(optarg); break;
-	  case 'i': f_setup.ignore_errors = 1; break;
-	  case 'l': f_setup.left_margin = atoi(optarg); break;
-	  case 'o': f_setup.object_movement = 1; break;
-	  case 'O': f_setup.object_locating = 1; break;
-	  case 'p': u_setup.plain_ascii = 1; break;
-	  case 'P': f_setup.piracy = 1; break;
-	  case 'q': f_setup.sound = 0; break;
-	  case 'Q': f_setup.save_quetzal = 0; break;
-	  case 'r': f_setup.right_margin = atoi(optarg); break;
-	  case 's': u_setup.random_seed = atoi(optarg); break;
-	  case 'S': f_setup.script_cols = atoi(optarg); break;
-	  case 't': u_setup.tandy_bit = 1; break;
-	  case 'u': f_setup.undo_slots = atoi(optarg); break;
-	  case 'w': u_setup.screen_width = atoi(optarg); break;
-	  case 'x': f_setup.expand_abbreviations = 1; break;
-	  case 'Z': f_setup.err_report_mode = atoi(optarg);
-		    if ((f_setup.err_report_mode < ERR_REPORT_NEVER) ||
-			(f_setup.err_report_mode > ERR_REPORT_FATAL))
-		      f_setup.err_report_mode = ERR_DEFAULT_REPORT_MODE;
-		    break;
+	strncat(configfile, USER_CONFIG, strlen(USER_CONFIG) + 1);
+	if (!getconfig(configfile)) {
+		strncpy(configfile, CONFIG_DIR, FILENAME_MAX);
+		strncat(configfile, "/", 2);    /* added by DJP */
+		strncat(configfile, MASTER_CONFIG, FILENAME_MAX-10);
+		getconfig(configfile);  /* we're not concerned if this fails */
 	}
 
-    } while (c != EOF);
+	/* Parse the options */
+	do {
+		c = zgetopt(argc, argv, "-aAb:c:def:Fh:iI:l:L:oOpPqr:R:s:S:tu:vw:W:xZ:");
+		switch(c) {
+		case 'a': f_setup.attribute_assignment = 1; break;
+		case 'A': f_setup.attribute_testing = 1; break;
+		case 'b':
+			u_setup.background_color = getcolor(zoptarg);
+			u_setup.force_color = 1;
+			u_setup.disable_color = 0;
+			if ((u_setup.background_color < 2) ||
+			    (u_setup.background_color > 9))
+				u_setup.background_color = -1;
+			break;
+		case 'c': f_setup.context_lines = atoi(zoptarg); break;
+		case 'd': u_setup.disable_color = 1; break;
+		case 'e': f_setup.sound = 1; break;
+		case 'f':
+			u_setup.foreground_color = getcolor(zoptarg);
+			u_setup.force_color = 1;
+			u_setup.disable_color = 0;
+			if ((u_setup.foreground_color < 2) ||
+			  (u_setup.foreground_color > 9))
+				u_setup.foreground_color = -1;
+			break;
+		case 'F':
+			u_setup.force_color = 1;
+			u_setup.disable_color = 0;
+			break;
+		case 'h': u_setup.screen_height = atoi(zoptarg); break;
+		case 'i': f_setup.ignore_errors = 1; break;
+		case 'I': f_setup.interpreter_number = atoi(zoptarg); break;
+		case 'l': f_setup.left_margin = atoi(zoptarg); break;
+		case 'L':
+			f_setup.restore_mode = 1;
+			f_setup.tmp_save_name = strdup(zoptarg);
+			break;
+		case 'o': f_setup.object_movement = 1; break;
+		case 'O': f_setup.object_locating = 1; break;
+		case 'p': u_setup.plain_ascii = 1; break;
+		case 'P': f_setup.piracy = 1; break;
+		case 'q': f_setup.sound = 0; break;
+		case 'r': f_setup.right_margin = atoi(zoptarg); break;
+		case 'R': f_setup.restricted_path = strndup(zoptarg, PATH_MAX); break;
+		case 's': u_setup.random_seed = atoi(zoptarg); break;
+		case 'S': f_setup.script_cols = atoi(zoptarg); break;
+		case 't': u_setup.tandy_bit = 1; break;
+		case 'u': f_setup.undo_slots = atoi(zoptarg); break;
+		case 'v': print_version(); os_quit(EXIT_SUCCESS); break;
+		case 'w': u_setup.screen_width = atoi(zoptarg); break;
+		case 'x': f_setup.expand_abbreviations = 1; break;
+		case 'Z':
+			f_setup.err_report_mode = atoi(zoptarg);
+			if ((f_setup.err_report_mode < ERR_REPORT_NEVER) ||
+			  (f_setup.err_report_mode > ERR_REPORT_FATAL))
+				f_setup.err_report_mode = ERR_DEFAULT_REPORT_MODE;
+			break;
+		}
+	} while (c != EOF);
 
-    if (optind != argc - 1) {
-	printf("FROTZ V%s\t", VERSION);
-#ifdef OSS_SOUND
-	printf("oss sound driver, ");
-#endif
+	if (argv[zoptind] == NULL) {
+		printf("FROTZ V%s - Curses interface.  ", VERSION);
 
-#ifdef USE_NCURSES
-	printf("ncurses interface.");
+#ifndef NO_SOUND
+		printf("Audio output enabled.");
 #else
-	printf("curses interface.");
+		printf("Audio output disabled.");
 #endif
-	putchar('\n');
+		putchar('\n');
 
-	puts (INFORMATION);
-	printf ("\t-Z # error checking mode (default = %d)\n"
-	    "\t     %d = don't report errors   %d = report first error\n"
-	    "\t     %d = report all errors     %d = exit after any error\n\n",
-	    ERR_DEFAULT_REPORT_MODE, ERR_REPORT_NEVER,
-	    ERR_REPORT_ONCE, ERR_REPORT_ALWAYS,
-	    ERR_REPORT_FATAL);
-	exit (1);
-    }
+		puts (INFORMATION);
+		puts (INFO2);
+		os_quit (EXIT_SUCCESS);
+	}
 
-    /* This section is exceedingly messy and really can't be fixed
-       without major changes all over the place.
-     */
+	/* This section is exceedingly messy and really can't be fixed
+	 * without major changes all over the place.
+	 */
 
-    /* Save the story file name */
+	/* Save the story file name */
 
-    f_setup.story_file = strdup(argv[optind]);
-    f_setup.story_name = strdup(basename(argv[optind]));
+	f_setup.story_file = strdup(argv[zoptind]);
+	f_setup.story_name = strdup(basename(argv[zoptind]));
 
-    /* Now strip off the extension. */
-    p = rindex(f_setup.story_name, '.');
-    if ((p != NULL) &&
-        ((strcmp(p,EXT_BLORB2) == 0) ||
-         (strcmp(p,EXT_BLORB3) == 0) ||
-         (strcmp(p,EXT_BLORB4) == 0) ) )
-    {
-        blorb_ext = strdup(p);
-    }
-    else
-    {
-        blorb_ext = strdup(EXT_BLORB);
-    }
+#ifndef NO_BLORB
+	if (argv[zoptind+1] != NULL)
+		f_setup.blorb_file = strdup(argv[zoptind+1]);
+#endif
 
-    /* Get rid of extensions with 1 to 6 character extensions. */
-    /* This will take care of an extension like ".zblorb". */
-    /* More than that, there might be something weird going on */
-    /* which is not our concern. */
-    if (p != NULL) {
-        if (strlen(p) >= 2 && strlen(p) <= 7) {
-                *p = '\0';      /* extension removed */
-        }
-    }
+	/* Now strip off the extension */
+	p = strrchr(f_setup.story_name, '.');
+	if ( p != NULL )
+		*p = '\0';  /* extension removed */
 
-    f_setup.story_path = strdup(dirname(argv[optind]));
+	/* Create nice default file names */
+	f_setup.script_name = malloc((strlen(f_setup.story_name) + strlen(EXT_SCRIPT)) * sizeof(char) + 1);
+	memcpy(f_setup.script_name, f_setup.story_name, (strlen(f_setup.story_name) + strlen(EXT_SCRIPT)) * sizeof(char));
+	strncat(f_setup.script_name, EXT_SCRIPT, strlen(EXT_SCRIPT) + 1);
 
-    /* Create nice default file names */
+	f_setup.command_name = malloc((strlen(f_setup.story_name) + strlen(EXT_COMMAND)) * sizeof(char) + 1);
+	memcpy(f_setup.command_name, f_setup.story_name, (strlen(f_setup.story_name) + strlen(EXT_COMMAND)) * sizeof(char));
+	strncat(f_setup.command_name, EXT_COMMAND, strlen(EXT_COMMAND) + 1);
 
-    u_setup.blorb_name = malloc(FILENAME_MAX * sizeof(char));
-    strncpy(u_setup.blorb_name, f_setup.story_name,
-	strlen(f_setup.story_name) +1);
-    strncat(u_setup.blorb_name, blorb_ext, strlen(blorb_ext));
+	if (!f_setup.restore_mode) {
+		f_setup.save_name = malloc((strlen(f_setup.story_name) + strlen(EXT_SAVE)) * sizeof(char) + 1);
+		memcpy(f_setup.save_name, f_setup.story_name, (strlen(f_setup.story_name) + strlen(EXT_SAVE)) * sizeof(char));
+		strncat(f_setup.save_name, EXT_SAVE, strlen(EXT_SAVE) + 1);
+	} else {  /*Set our auto load save as the name_save*/
+		f_setup.save_name = malloc((strlen(f_setup.tmp_save_name) + strlen(EXT_SAVE)) * sizeof(char) + 1);
+		memcpy(f_setup.save_name, f_setup.tmp_save_name, (strlen(f_setup.tmp_save_name) + strlen(EXT_SAVE)) * sizeof(char));
+		free(f_setup.tmp_save_name);
+	}
 
-    u_setup.blorb_file = malloc(strlen(f_setup.story_path) *
-                sizeof(char) + strlen(u_setup.blorb_name) * sizeof(char) + 4);
-    strncpy(u_setup.blorb_file, f_setup.story_path,
-	strlen(f_setup.story_path));
-    strncat(u_setup.blorb_file, "/", 1);
-    strncat(u_setup.blorb_file, u_setup.blorb_name,
-	strlen(u_setup.blorb_name) + 1);
+	f_setup.aux_name = malloc((strlen(f_setup.story_name) + strlen(EXT_AUX)) * sizeof(char) + 1);
+	memcpy(f_setup.aux_name, f_setup.story_name, (strlen(f_setup.story_name) + strlen(EXT_AUX)) * sizeof(char));
+	strncat(f_setup.aux_name, EXT_AUX, strlen(EXT_AUX) + 1);
+} /* os_process_arguments */
 
-    f_setup.script_name = malloc(strlen(f_setup.story_name) * sizeof(char) + 5);
-    strncpy(f_setup.script_name, f_setup.story_name, strlen(f_setup.story_name));
-    strncat(f_setup.script_name, EXT_SCRIPT, strlen(EXT_SCRIPT));
 
-    f_setup.command_name = malloc(strlen(f_setup.story_name) * sizeof(char) + 5);
-    strncpy(f_setup.command_name, f_setup.story_name, strlen(f_setup.story_name));
-    strncat(f_setup.command_name, EXT_COMMAND, strlen(EXT_COMMAND));
+void unix_get_terminal_size()
+{
+	int y, x;
+	getmaxyx(stdscr, y, x);
 
-    f_setup.save_name = malloc(strlen(f_setup.story_name) * sizeof(char) + 5);
-    strncpy(f_setup.save_name, f_setup.story_name, strlen(f_setup.story_name));
-    strncat(f_setup.save_name, EXT_SAVE, strlen(EXT_SAVE));
+	/* 255 disables paging entirely. */
+	if (u_setup.screen_height != -1)
+		z_header.screen_rows = u_setup.screen_height;
+	else
+		z_header.screen_rows = MIN(254, y);
 
-    f_setup.aux_name = malloc(strlen(f_setup.story_name) * sizeof(char) + 5);
-    strncpy(f_setup.aux_name, f_setup.story_name, strlen(f_setup.story_name));
-    strncat(f_setup.aux_name, EXT_AUX, strlen(EXT_AUX));
+	if (u_setup.screen_width != -1)
+		z_header.screen_cols = u_setup.screen_width;
+	else
+		z_header.screen_cols = MIN(255, x);
 
-    switch (ux_init_blorb()) {
-        case bb_err_Format:
-	  printf("Blorb file loaded, but unable to build map.\n\n");
-	  break;
-	case bb_err_NotFound:
-	  printf("Blorb file loaded, but lacks executable chunk.\n\n");
-	  break;
-    }
+	if (z_header.screen_cols < 1) {
+		endwin();
+		u_setup.curses_active = FALSE;
+		os_fatal("Invalid screen width. Must be between 1 and 255.");
+	}
 
-  printf("u_setup.blorb_file %s\n", u_setup.blorb_file);
-  printf("u_setup.blorb_name %s\n", u_setup.blorb_name);
+	z_header.font_width = 1;
+	z_header.font_height = 1;
 
-}/* os_process_arguments */
+	z_header.screen_width = z_header.screen_cols;
+	z_header.screen_height = z_header.screen_rows;
+} /* unix_get_terminal */
+
 
 /*
  * os_init_screen
@@ -362,19 +418,19 @@ void os_process_arguments (int argc, char *argv[])
  * (mouse, sound board). Set various OS depending story file header
  * entries:
  *
- *     h_config (aka flags 1)
- *     h_flags (aka flags 2)
- *     h_screen_cols (aka screen width in characters)
- *     h_screen_rows (aka screen height in lines)
- *     h_screen_width
- *     h_screen_height
- *     h_font_height (defaults to 1)
- *     h_font_width (defaults to 1)
- *     h_default_foreground
- *     h_default_background
- *     h_interpreter_number
- *     h_interpreter_version
- *     h_user_name (optional; not used by any game)
+ *     z_header.config (aka flags 1)
+ *     z_header.flags (aka flags 2)
+ *     z_header.screen_cols (aka screen width in characters)
+ *     z_header.screen_rows (aka screen height in lines)
+ *     z_header.screen_width
+ *     z_header.screen_height
+ *     z_header.font_height (defaults to 1)
+ *     z_header.font_width (defaults to 1)
+ *     z_header.default_foreground
+ *     z_header.default_background
+ *     z_header.interpreter_number
+ *     z_header.interpreter_version
+ *     z_header.user_name (optional; not used by any game)
  *
  * Finally, set reserve_mem to the amount of memory (in bytes) that
  * should not be used for multiple undo and reserved for later use.
@@ -383,122 +439,119 @@ void os_process_arguments (int argc, char *argv[])
  *  ugly hacks, neener neener neener. --GH :)
  *
  */
-
 void os_init_screen (void)
 {
+	/*trace(TRACE_CALLS);*/
 
-    /*trace(TRACE_CALLS);*/
-
-    if (initscr() == NULL) {    /* Set up curses */
-	os_fatal("Unable to initialize curses. Maybe your $TERM setting is bad.");
-	exit(1);
-    }
-    u_setup.curses_active = 1;	/* Let os_fatal know curses is running */
-    cbreak();			/* Raw input mode, no line processing */
-    noecho();			/* No input echo */
-    nonl();			/* No newline translation */
-    intrflush(stdscr, TRUE);	/* Flush output on interrupt */
-    keypad(stdscr, TRUE);	/* Enable the keypad and function keys */
-    scrollok(stdscr, FALSE);	/* No scrolling unless explicitly asked for */
-
-    if (h_version == V3 && u_setup.tandy_bit != 0)
-        h_config |= CONFIG_TANDY;
-
-    if (h_version == V3)
-	h_config |= CONFIG_SPLITSCREEN;
-
-    if (h_version >= V4)
-	h_config |= CONFIG_BOLDFACE | CONFIG_EMPHASIS | CONFIG_FIXED | CONFIG_TIMEDINPUT;
-
-    if (h_version >= V5)
-      h_flags &= ~(GRAPHICS_FLAG | MOUSE_FLAG | MENU_FLAG);
-
-#ifdef NO_SOUND
-    if (h_version >= V5)
-      h_flags &= ~SOUND_FLAG;
-
-    if (h_version == V3)
-      h_flags &= ~OLD_SOUND_FLAG;
-#else
-    if ((h_version >= 5) && (h_flags & SOUND_FLAG))
-	h_flags |= SOUND_FLAG;
-
-    if ((h_version == 3) && (h_flags & OLD_SOUND_FLAG))
-	h_flags |= OLD_SOUND_FLAG;
-
-    if ((h_version == 6) && (f_setup.sound != 0))
-	h_config |= CONFIG_SOUND;
+#ifdef USE_UTF8
+	setlocale(LC_ALL, "");
 #endif
 
-    if (h_version >= V5 && (h_flags & UNDO_FLAG))
-        if (f_setup.undo_slots == 0)
-            h_flags &= ~UNDO_FLAG;
+	if (getenv("ESCDELAY") == NULL)
+		setenv("ESCDELAY", "50", 1);
 
-    getmaxyx(stdscr, h_screen_rows, h_screen_cols);
+	if (initscr() == NULL) {    /* Set up curses */
+		os_fatal("Unable to initialize curses. Maybe your $TERM setting is bad.");
+		os_quit(EXIT_FAILURE);
+	}
+	u_setup.curses_active = 1;	/* Let os_fatal know curses is running */
+	raw();				/* Raw input mode, no line processing */
+	noecho();			/* No input echo */
+	nonl();				/* No newline translation */
+	intrflush(stdscr, TRUE);	/* Flush output on interrupt */
+	keypad(stdscr, TRUE);		/* Enable the keypad and function keys */
+	scrollok(stdscr, FALSE);	/* No scrolling unless explicitly asked for */
 
-    if (u_setup.screen_height != -1)
-	h_screen_rows = u_setup.screen_height;
-    if (u_setup.screen_width != -1)
-	h_screen_cols = u_setup.screen_width;
+	if (z_header.version == V3 && u_setup.tandy_bit != 0)
+		z_header.config |= CONFIG_TANDY;
 
-    h_screen_width = h_screen_cols;
-    h_screen_height = h_screen_rows;
+	if (z_header.version == V3)
+		z_header.config |= CONFIG_SPLITSCREEN;
 
-    h_font_width = 1;
-    h_font_height = 1;
+	if (z_header.version >= V4)
+		z_header.config |= CONFIG_BOLDFACE | CONFIG_EMPHASIS | CONFIG_FIXED | CONFIG_TIMEDINPUT;
 
-    /* Must be after screen dimensions are computed.  */
-    if (h_version == V6) {
-      if (unix_init_pictures())
-	h_config |= CONFIG_PICTURES;
-      else
-	h_flags &= ~GRAPHICS_FLAG;
-    }
+	if (z_header.version >= V5)
+		z_header.flags &= ~(GRAPHICS_FLAG | MOUSE_FLAG | MENU_FLAG);
 
-    /* Use the ms-dos interpreter number for v6, because that's the
-     * kind of graphics files we understand.  Otherwise, use DEC.  */
-    h_interpreter_number = h_version == 6 ? INTERP_MSDOS : INTERP_DEC_20;
-    h_interpreter_version = 'F';
+#ifdef NO_SOUND
+	if (z_header.version >= V5)
+		z_header.flags &= ~SOUND_FLAG;
+
+	if (z_header.version == V3)
+		z_header.flags &= ~OLD_SOUND_FLAG;
+#else
+	if ((z_header.version >= V5) && (z_header.flags & SOUND_FLAG))
+		z_header.flags |= SOUND_FLAG;
+
+	if ((z_header.version == V3) && (z_header.flags & OLD_SOUND_FLAG))
+		z_header.flags |= OLD_SOUND_FLAG;
+
+	if ((z_header.version == V6) && (f_setup.sound != 0))
+		z_header.config |= CONFIG_SOUND;
+#endif
+
+	if (z_header.version >= V5 && (z_header.flags & UNDO_FLAG)) {
+		if (f_setup.undo_slots == 0)
+			z_header.flags &= ~UNDO_FLAG;
+	}
+
+	unix_get_terminal_size();
+
+	/* Must be after screen dimensions are computed.  */
+	if (z_header.version == V6) {
+		if (unix_init_pictures())
+			z_header.config |= CONFIG_PICTURES;
+		else
+			z_header.flags &= ~GRAPHICS_FLAG;
+	}
+
+	/* Use the ms-dos interpreter number for v6, because that's the
+	 * kind of graphics files we understand.  Otherwise, use DEC.  */
+	if (f_setup.interpreter_number == INTERP_DEFAULT)
+		z_header.interpreter_number = z_header.version == V6 ? INTERP_MSDOS : INTERP_DEC_20;
+	else
+		z_header.interpreter_number = f_setup.interpreter_number;
+
+	z_header.interpreter_version = 'F';
 
 #ifdef COLOR_SUPPORT
-    /* Enable colors if the terminal supports them, the user did not
-     * disable colors, and the game or user requested colors.  User
-     * requests them by specifying a foreground or background.
-     */
-    u_setup.color_enabled = (has_colors()
-			&& !u_setup.disable_color
-			&& (((h_version >= 5) && (h_flags & COLOUR_FLAG))
-			  || (u_setup.foreground_color != -1)
-			  || (u_setup.background_color != -1)));
+	/* Enable colors if the terminal supports them, the user did not
+	 * disable colors, and the game or user requested colors.  User
+	 * requests them by specifying a foreground or background.
+	 */
+	u_setup.color_enabled = (has_colors() && !u_setup.disable_color
+		&& (((z_header.version >= V5) && (z_header.flags & COLOUR_FLAG))
+		|| (u_setup.foreground_color != -1)
+		|| (u_setup.background_color != -1)));
 
-    /* Maybe we don't want to muck about with changing $TERM to
-     * xterm-color which some supposedly current Unicies still don't
-     * understand.
-     */
-    if (u_setup.force_color)
-	u_setup.color_enabled = TRUE;
+	/* Maybe we don't want to muck about with changing $TERM to
+	 * xterm-color which some supposedly current Unicies still don't
+	 * understand.
+	 */
+	if (u_setup.force_color)
+		u_setup.color_enabled = TRUE;
 
-    if (u_setup.color_enabled) {
-        h_config |= CONFIG_COLOUR;
-        h_flags |= COLOUR_FLAG; /* FIXME: beyond zork handling? */
-        start_color();
-	h_default_foreground =
-	  (u_setup.foreground_color == -1)
-	  	? FOREGROUND_DEF : u_setup.foreground_color;
-	h_default_background =
-	  (u_setup.background_color ==-1)
-		? BACKGROUND_DEF : u_setup.background_color;
-    } else
+	if (u_setup.color_enabled) {
+		z_header.config |= CONFIG_COLOUR;
+		z_header.flags |= COLOUR_FLAG; /* FIXME: beyond zork handling? */
+		start_color();
+		z_header.default_foreground = (u_setup.foreground_color == -1)
+			? FOREGROUND_DEF : u_setup.foreground_color;
+		z_header.default_background = (u_setup.background_color ==-1)
+			? BACKGROUND_DEF : u_setup.background_color;
+	} else
 #endif /* COLOR_SUPPORT */
-    {
-	/* Set these per spec 8.3.2. */
-	h_default_foreground = WHITE_COLOUR;
-	h_default_background = BLACK_COLOUR;
-	if (h_flags & COLOUR_FLAG) h_flags &= ~COLOUR_FLAG;
-    }
-    os_set_colour(h_default_foreground, h_default_background);
-    os_erase_area(1, 1, h_screen_rows, h_screen_cols, 0);
-}/* os_init_screen */
+	{
+		/* Set these per spec 8.3.2. */
+		z_header.default_foreground = WHITE_COLOUR;
+		z_header.default_background = BLACK_COLOUR;
+		if (z_header.flags & COLOUR_FLAG) z_header.flags &= ~COLOUR_FLAG;
+	}
+	os_set_colour(z_header.default_foreground, z_header.default_background);
+	os_erase_area(1, 1, z_header.screen_rows, z_header.screen_cols, 0);
+} /* os_init_screen */
+
 
 /*
  * os_reset_screen
@@ -506,18 +559,34 @@ void os_init_screen (void)
  * Reset the screen before the program stops.
  *
  */
-
 void os_reset_screen (void)
 {
+	os_stop_sample(0);
+	os_set_text_style(0);
+	print_c_string("[Hit any key to exit.]\n");
+	os_read_key(0, FALSE);
+} /* os_reset_screen */
 
-    os_stop_sample(0);
-    os_set_text_style(0);
-    print_string("[Hit any key to exit.]\n");
-    os_read_key(0, FALSE);
-    scrollok(stdscr, TRUE); scroll(stdscr);
-    refresh(); endwin();
 
-}/* os_reset_screen */
+/*
+ * os_quit
+ *
+ * Immediately and cleanly exit, passing along exit status.
+ *
+ */
+void os_quit(int status)
+{
+	os_stop_sample(0);
+	ux_blorb_stop();
+	if (u_setup.curses_active) {
+		scrollok(stdscr, TRUE);
+		scroll(stdscr);
+		refresh();
+		endwin();
+	}
+	exit(status);
+} /* os_quit */
+
 
 /*
  * os_restart_game
@@ -530,10 +599,11 @@ void os_reset_screen (void)
  *     RESTART_END - restart is complete
  *
  */
-
-void os_restart_game (int stage)
+void os_restart_game (int UNUSED (stage))
 {
-}
+	/* Nothing here yet */
+} /* os_restart_game */
+
 
 /*
  * os_random_seed
@@ -542,16 +612,14 @@ void os_restart_game (int stage)
  * 32767, possibly by using the current system time.
  *
  */
-
 int os_random_seed (void)
 {
-
-    if (u_setup.random_seed == -1)
-      /* Use the epoch as seed value */
-      return (time(0) & 0x7fff);
-    else return u_setup.random_seed;
-
-}/* os_random_seed */
+	/* Use the epoch as seed value */
+	if (u_setup.random_seed == -1)
+		return (time(0) & 0x7fff);
+	else
+		return u_setup.random_seed;
+} /* os_random_seed */
 
 
 /*
@@ -562,39 +630,34 @@ int os_random_seed (void)
  * defined, search INFOCOM_PATH.
  *
  */
-
 FILE *os_path_open(const char *name, const char *mode)
 {
 	FILE *fp;
-	char buf[FILENAME_MAX + 1];
 	char *p;
 
 	/* Let's see if the file is in the currect directory */
 	/* or if the user gave us a full path. */
-	if ((fp = fopen(name, mode))) {
+	if ((fp = fopen(name, mode)))
 		return fp;
-	}
 
 	/* If zcodepath is defined in a config file, check that path. */
 	/* If we find the file a match in that path, great. */
 	/* Otherwise, check some environmental variables. */
 	if (f_setup.zcode_path != NULL) {
-		if ((fp = pathopen(name, f_setup.zcode_path, mode, buf)) != NULL) {
-			strncpy(f_setup.story_name, buf, FILENAME_MAX);
+		if ((fp = pathopen(name, f_setup.zcode_path, mode)) != NULL)
 			return fp;
-		}
 	}
 
 	if ( (p = getenv(PATH1) ) == NULL)
 		p = getenv(PATH2);
 
 	if (p != NULL) {
-		fp = pathopen(name, p, mode, buf);
-		strncpy(f_setup.story_name, buf, FILENAME_MAX);
+		fp = pathopen(name, p, mode);
 		return fp;
 	}
 	return NULL;	/* give up */
 } /* os_path_open() */
+
 
 /*
  * os_load_story
@@ -610,52 +673,122 @@ FILE *os_path_open(const char *name, const char *mode)
  */
 FILE *os_load_story(void)
 {
-    FILE *fp;
+#ifndef NO_BLORB
+	FILE *fp;
 
-    /* Did we build a valid blorb map? */
-    if (u_setup.exec_in_blorb) {
-	fp = fopen(u_setup.blorb_file, "rb");
-	fseek(fp, blorb_res.data.startpos, SEEK_SET);
-    } else {
-	fp = fopen(f_setup.story_file, "rb");
-    }
-    return fp;
-}
+	switch (ux_blorb_init(f_setup.story_file)) {
+	case bb_err_NoBlorb:
+		/* printf("No blorb file found.\n\n"); */
+		break;
+	case bb_err_Format:
+		printf("Blorb file loaded, but unable to build map.\n\n");
+		break;
+	case bb_err_NotFound:
+		printf("Blorb file loaded, but lacks ZCOD executable chunk.\n\n");
+		break;
+	case bb_err_None:
+		/* printf("No blorb errors.\n\n"); */
+		break;
+	}
+
+	fp = os_path_open(f_setup.story_file, "rb");
+
+	/* Is this a Blorb file containing Zcode? */
+	if (f_setup.exec_in_blorb)
+		fseek(fp, blorb_res.data.startpos, SEEK_SET);
+
+	return fp;
+#else
+	return os_path_open(f_setup.story_file, "rb");
+#endif
+} /* os_load_story */
+
+
+/*
+ * os_storyfile_seek
+ *
+ * Seek into a storyfile, either a standalone file or the
+ * ZCODE chunk of a blorb file.
+ *
+ */
+int os_storyfile_seek(FILE * fp, long offset, int whence)
+{
+#ifndef NO_BLORB
+	/* Is this a Blorb file containing Zcode? */
+	if (f_setup.exec_in_blorb) {
+		switch (whence) {
+		case SEEK_END:
+			return fseek(fp, blorb_res.data.startpos + blorb_res.length + offset, SEEK_SET);
+			break;
+		case SEEK_CUR:
+			return fseek(fp, offset, SEEK_CUR);
+			break;
+		case SEEK_SET:
+			/* SEEK_SET falls through to default */
+		default:
+			return fseek(fp, blorb_res.data.startpos + offset, SEEK_SET);
+			break;
+		}
+	} else
+		return fseek(fp, offset, whence);
+#else
+	return fseek(fp, offset, whence);
+#endif
+} /* os_storyfile_seek */
+
+
+/*
+ * os_storyfile_tell
+ *
+ * Tell the position in a storyfile, either a standalone file
+ * or the ZCODE chunk of a blorb file.
+ *
+ */
+int os_storyfile_tell(FILE * fp)
+{
+#ifdef NO_BLORB
+	/* Is this a Blorb file containing Zcode? */
+	if (f_setup.exec_in_blorb)
+		return ftell(fp) - blorb_res.data.startpos;
+	else
+		return ftell(fp);
+#else
+	return ftell(fp);
+#endif
+} /* os_storyfile_tell */
 
 
 /*
  * pathopen
  *
  * Given a standard Unix-style path and a filename, search the path for
- * that file.  If found, return a pointer to that file and put the full
- * path where the file was found in fullname.
+ * that file.  If found, return a pointer to that file
  *
  */
-
-FILE *pathopen(const char *name, const char *p, const char *mode, char *fullname)
+static FILE *pathopen(const char *name, const char *path, const char *mode)
 {
 	FILE *fp;
-	char buf[FILENAME_MAX + 1];
-	char *bp, lastch;
+	char *buf;	
+	
+	/*
+	 * If the path variable doesn't end in a "/" a "/"
+	 * will be added, so the buffer needs to be long enough
+	 * for the path + / + name + \0
+	 */	
+	size_t buf_sz = strlen(path) + strlen(name) + sizeof(DIRSEP) + 1;
+	buf = malloc(buf_sz);
+	
+	if (path[strlen(path)-1] != DIRSEP) {
+		snprintf(buf, buf_sz, "%s%c%s", path, DIRSEP, name);
+	} else {
+		snprintf(buf, buf_sz, "%s%s", path, name);
+	}	
 
-	lastch = 'a';	/* makes compiler shut up */
+	fp = fopen(buf, mode);
+	free(buf);
+	return fp;
 
-	while (*p) {
-		bp = buf;
-		while (*p && *p != PATHSEP)
-			lastch = *bp++ = *p++;
-		if (lastch != DIRSEP)
-			*bp++ = DIRSEP;
-		strcpy(bp, name);
-		if ((fp = fopen(buf, mode)) != NULL) {
-			strncpy(fullname, buf, FILENAME_MAX);
-			return fp;
-		}
-		if (*p)
-			p++;
-	}
-	return NULL;
-} /* FILE *pathopen() */
+} /* pathopen */
 
 
 /*
@@ -672,15 +805,14 @@ FILE *pathopen(const char *name, const char *p, const char *mode, char *fullname
  * compile targets to have those two tools installed.
  *
  */
-int getconfig(char *configfile)
+static int getconfig(char *configfile)
 {
 	FILE	*fp;
 
-	int	num, num2;
+	size_t	num, num2;
 
 	char	varname[LINELEN + 1];
 	char	value[LINELEN + 1];
-
 
 	/*
 	 * We shouldn't care if the config file is unreadable or not
@@ -699,7 +831,7 @@ int getconfig(char *configfile)
 			;
 
 		/* Remove trailing whitespace and newline */
-		for (num = strlen(varname) - 1; isspace(varname[num]); num--)
+		for (num = strlen(varname) - 1; (ssize_t) num >= 0 && isspace((int) varname[num]); num--)
 		;
 		varname[num+1] = 0;
 
@@ -710,9 +842,9 @@ int getconfig(char *configfile)
 		}
 
 		/* Find end of variable name */
-		for (num = 0; !isspace(varname[num]) && num < LINELEN; num++);
+		for (num = 0; varname[num] != 0 && !isspace((int) varname[num]) && num < LINELEN; num++);
 
-		for (num2 = num; isspace(varname[num2]) && num2 < LINELEN; num2++);
+		for (num2 = num; isspace((int) varname[num2]) && num2 < LINELEN; num2++);
 
 		/* Find the beginning of the value */
 		strncpy(value, &varname[num2], LINELEN);
@@ -756,9 +888,6 @@ int getconfig(char *configfile)
 		}
 		else if (strcmp(varname, "sound") == 0) {
 			f_setup.sound = getbool(value);
-		}
-		else if (strcmp(varname, "quetzal") == 0) {
-			f_setup.save_quetzal = getbool(value);
 		}
 		else if (strcmp(varname, "tandy") == 0) {
 			u_setup.tandy_bit = getbool(value);
@@ -806,15 +935,13 @@ int getconfig(char *configfile)
 		/* now for really stringtype variable */
 
 		else if (strcmp(varname, "zcode_path") == 0) {
-			f_setup.zcode_path = malloc(strlen(value) * sizeof(char) + 1);
-			strncpy(f_setup.zcode_path, value, strlen(value) * sizeof(char));
-		}
-
-		/* The big nasty if-else thingy is finished */
+			size_t sz = strlen(value) * sizeof(char) + 1;
+			f_setup.zcode_path = malloc(sz);
+			memcpy(f_setup.zcode_path, value, sz);
+		} /* The big nasty if-else thingy is finished */
 	} /* while */
-
 	return TRUE;
-} /* getconfig() */
+} /* getconfig */
 
 
 /*
@@ -824,13 +951,13 @@ int getconfig(char *configfile)
  * Otherwise return FALSE.
  *
  */
-int getbool(char *value)
+static int getbool(char *value)
 {
 	int num;
 
 	/* Be case-insensitive */
 	for (num = 0; value[num] !=0; num++)
-		value[num] = tolower(value[num]);
+		value[num] = tolower((int) value[num]);
 
 	if (strncmp(value, "y", 1) == 0)
 		return TRUE;
@@ -842,7 +969,7 @@ int getbool(char *value)
 		return TRUE;
 
 	return FALSE;
-} /* getbool() */
+} /* getbool */
 
 
 /*
@@ -852,13 +979,13 @@ int getbool(char *value)
  * corresponding to the color macros defined in frotz.h.
  *
  */
-int getcolor(char *value)
+static int getcolor(char *value)
 {
 	int num;
 
 	/* Be case-insensitive */
 	for (num = 0; value[num] !=0; num++)
-		value[num] = tolower(value[num]);
+		value[num] = tolower((int) value[num]);
 
 	if (strcmp(value, "black") == 0)
 		return BLACK_COLOUR;
@@ -874,6 +1001,8 @@ int getcolor(char *value)
 		return CYAN_COLOUR;
 	if (strcmp(value, "white") == 0)
 		return WHITE_COLOUR;
+	if (strcmp(value, "yellow") == 0)
+		return YELLOW_COLOUR;
 
 	if (strcmp(value, "purple") == 0)
 		return MAGENTA_COLOUR;
@@ -888,7 +1017,7 @@ int getcolor(char *value)
 
 	return -1;
 
-} /* getcolor() */
+} /* getcolor */
 
 
 /*
@@ -898,13 +1027,13 @@ int getcolor(char *value)
  * defined in ux_frotz.h related to the error reporting mode.
  *
  */
-int geterrmode(char *value)
+static int geterrmode(char *value)
 {
 	int num;
 
         /* Be case-insensitive */
 	for (num = 0; value[num] !=0; num++)
-		value[num] = tolower(value[num]);
+		value[num] = tolower((int) value[num]);
 
 	if (strcmp(value, "never") == 0)
 		return ERR_REPORT_NEVER;
@@ -922,22 +1051,17 @@ int geterrmode(char *value)
 /*
  * sigwinch_handler
  *
- * Called whenever Frotz recieves a SIGWINCH signal to make curses
- * cleanly resize the window.
+ * Called whenever Frotz receives a SIGWINCH signal to make curses
+ * cleanly resize the window.  To be safe, just set a flag here.
+ * It is checked and cleared in unix_read_char.
  *
  */
-
-void sigwinch_handler(int sig)
+static void sigwinch_handler(int UNUSED(sig))
 {
-/*
-There are some significant problems involved in getting resizes to work
-properly with at least this implementation of the Z Machine and probably
-the Z-Machine standard itself.  See the file BUGS for a detailed
-explaination for this.  Because of this trouble, this function currently
-does nothing.
-*/
-
+	terminal_resized = 1;
+	signal(SIGWINCH, sigwinch_handler);
 }
+
 
 /*
  * sigint_handler
@@ -945,43 +1069,16 @@ does nothing.
  * is not done.
  *
  */
-void sigint_handler(int dummy)
+static void sigint_handler(int UNUSED(dummy))
 {
-    signal(SIGINT, sigint_handler);
-
-    scrollok(stdscr, TRUE); scroll(stdscr);
-    refresh(); endwin();
-
-    exit(1);
-}
-
-void redraw(void)
-{
-	/* not implemented */
-}
+	signal(SIGINT, sigint_handler);
+	os_quit(EXIT_FAILURE);
+} /* sigint_handler */
 
 
 void os_init_setup(void)
 {
-
-	f_setup.attribute_assignment = 0;
-	f_setup.attribute_testing = 0;
-	f_setup.context_lines = 0;
-	f_setup.object_locating = 0;
-	f_setup.object_movement = 0;
-	f_setup.left_margin = 0;
-	f_setup.right_margin = 0;
-	f_setup.ignore_errors = 0;
-	f_setup.piracy = 0;		/* enable the piracy opcode */
-	f_setup.undo_slots = MAX_UNDO_SLOTS;
-	f_setup.expand_abbreviations = 0;
-	f_setup.script_cols = 80;
-	f_setup.save_quetzal = 1;
-	f_setup.sound = 1;
-	f_setup.err_report_mode = ERR_DEFAULT_REPORT_MODE;
-
-	u_setup.use_blorb = 0;
-	u_setup.exec_in_blorb = 0;
+	f_setup.interpreter_number = INTERP_DEC_20;
 
 	u_setup.disable_color = 0;
 	u_setup.force_color = 0;
@@ -1003,37 +1100,44 @@ void os_init_setup(void)
 	/* u_setup.interpreter = INTERP_DEFAULT; */
 	u_setup.current_color = 0;
 	u_setup.color_enabled = FALSE;
+} /* os_init_setup */
 
-}
 
-int ux_init_blorb(void)
+#ifdef NO_STRRCHR
+/*
+ * This is for operating systems that lack strrchr(3).
+ *
+ */
+char *my_strrchr(const char *s, int c)
 {
-    FILE *blorbfile;
+	const char *save;
 
-    /* If the filename given on the command line is the same as our
-     * computed blorb filename, then we will assume the executable
-     * is contained in the blorb file.
-     */
+	if (c == 0) return (char *)s + strlen(s);
+		save = 0;
+	while (*s) {
+		if (*s == c)
+			save = s;
+		s++;
+	}
+	return (char *)save;
+} /* my_strrchr */
+#endif	/* NO_STRRCHR */
 
-    if (strncmp(basename(f_setup.story_file),
-     basename(u_setup.blorb_file), 55) == 0) {
-	if ((blorbfile = fopen(u_setup.blorb_file, "rb")) == NULL)
-	    return bb_err_Read;
-	blorb_err = bb_create_map(blorbfile, &blorb_map);
-	if (blorb_err != bb_err_None)
-	    return bb_err_Format;
 
-    /* Now we need to locate the EXEC chunk within the blorb file
-     * and present it to the rest of the program as a file stream.
-     */
-
-	blorb_err = bb_load_chunk_by_type(blorb_map, bb_method_FilePos, 
-			&blorb_res, bb_make_id('Z','C','O','D'), 0);
-
-	if (blorb_err == bb_err_None) {
-	    u_setup.exec_in_blorb = 1;
-	    u_setup.use_blorb = 1;
-        }
-	return blorb_err;
-    }
-}
+static void print_version(void)
+{
+	printf("FROTZ V%s\tCurses interface.  ", VERSION);
+#ifndef NO_SOUND
+	printf("Audio output enabled.");
+#else
+	printf("Audio output disabled.");
+#endif
+	printf("\nCommit date:\t%s\n", GIT_DATE);
+	printf("Git commit:\t%s\n", GIT_HASH);
+	printf("  Frotz was originally written by Stefan Jokisch.\n");
+	printf("  It complies with standard 1.0 of Graham Nelson's specification.\n");
+	printf("  It was ported to Unix by Galen Hazelwood.\n");
+	printf("  The core and Unix port are maintained by David Griffith.\n");
+	printf("  Frotz's homepage is https://661.org/proj/if/frotz/\n\n");
+	return;
+} /* print_version */

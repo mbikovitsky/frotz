@@ -15,10 +15,13 @@
  *
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA
+ * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
+ * Or visit http://www.fsf.org/
  */
 
 #define __UNIX_PORT_FILE
+
+#include "ux_defines.h"
 
 #ifdef USE_NCURSES_H
 #include <ncurses.h>
@@ -27,8 +30,20 @@
 #endif
 
 #include "ux_frotz.h"
-
 #ifdef NO_SOUND	/* don't compile this unless we're using no audio */
+
+
+/*
+ * os_init_sound
+ *
+ * Do any required setup for sound output.
+ *
+ */
+void os_init_sound(void)
+{
+	/* Not implemented */
+}
+
 
 /*
  * os_beep
@@ -37,13 +52,11 @@
  * or low-pitched (number == 2).
  *
  */
-
-void os_beep (int number)
+void os_beep (int UNUSED(number))
 {
+	beep();
+}
 
-    beep();
-
-}/* os_beep */
 
 /*
  * os_prepare_sample
@@ -51,13 +64,13 @@ void os_beep (int number)
  * Load the sample from the disk.
  *
  */
-
-void os_prepare_sample (int number)
+void os_prepare_sample (int UNUSED(number))
 {
 
-    /* Not implemented */
+	/* Not implemented */
 
-}/* os_prepare_sample */
+}
+
 
 /*
  * os_start_sample
@@ -71,12 +84,13 @@ void os_prepare_sample (int number)
  *
  */
 
-void os_start_sample (int number, int volume, int repeats, zword eos)
+void os_start_sample (int UNUSED(number), int UNUSED(volume), int UNUSED(repeats), zword UNUSED(eos))
 {
 
-    /* Not implemented */
+	/* Not implemented */
 
-}/* os_start_sample */
+}
+
 
 /*
  * os_stop_sample
@@ -84,13 +98,13 @@ void os_start_sample (int number, int volume, int repeats, zword eos)
  * Turn off the current sample.
  *
  */
-
-void os_stop_sample (int number)
+void os_stop_sample (int UNUSED(number))
 {
 
     /* Not implemented */
 
-}/* os_stop_sample */
+}
+
 
 /*
  * os_finish_with_sample
@@ -98,13 +112,12 @@ void os_stop_sample (int number)
  * Remove the current sample from memory (if any).
  *
  */
-
-void os_finish_with_sample (number)
+void os_finish_with_sample (int UNUSED(number))
 {
 
     /* Not implemented */
 
-}/* os_finish_with_sample */
+}
 
 /*
  * os_wait_sample
@@ -118,6 +131,6 @@ void os_wait_sample (void)
 
     /* Not implemented */
 
-}/* os_wait_sample */
+}
 
 #endif /* NO_SOUND */

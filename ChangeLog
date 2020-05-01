@@ -1,3 +1,108 @@
+Summary of changes between Frotz 2.50 and Frotz 2.51:
+=====================================================
+
+Frotz 2.51 was released on Wednesday February 12, 2020.
+
+This is a minor release focusing on minor enhancements and bug fixes.
+
+NEW FEATURES
+
+- Added an -f option for Dumb Frotz to mark up the output with color and
+  formatting codes.  Currently "irc", "ansi", and "normal" modes are
+  supported.
+
+
+BUG FIXES
+
+- Cleanly account for some installations of ncurses which have the
+  library split into ncurses (high level) and tinfo (low level).
+
+- Added an idiosyncrasy fix for Cutthroats, which assumes a
+  quick-and-dirty conversion of 24-hour notation to am/pm notation.
+
+- Fixed where the Makefile used spaces instead of a tab in a rarely-used
+  recipe.
+
+- Fixed a memory allocation problem with restoring a game at the command
+  line using the -L option.
+
+- Fixed an oversight in which curses wasn't being shut down properly
+  when fatal zcode errors were encountered.
+
+
+Summary of changes between Frotz 2.44 and Frotz 2.50:
+=====================================================
+
+Frotz 2.50 was released on Tuesday November 12, 2019.
+
+NEW FEATURES
+
+- Added UTF-8 input and output.  Plain ASCII is still available.
+
+- Added -L option for restoring save file directly from the command line.
+
+- Added -R option for restricted read/write path.
+
+- Sound effects in AIFF, MOD, and OGG formats supported per the Blorb specs.
+
+- Sound driver selection is automated through the use of libao.
+
+- Allow for an alternative Blorb file to be specified on the command line.
+
+
+BUG FIXES
+
+- Overhauled MacOS compilation.
+
+- Corrected problems with error handling.
+
+- Fixed a lot of unsafe strcpy() and strcat() calls.
+
+- Fixed numerous problems with portability to other flavors of Unix.
+
+- Fixed adaptive palette rendering for SDL.
+
+- Fixed scaling with manually specified window dimensions.
+
+- Fixed problem with unnecessary newlines with input timeouts.
+
+- Allow fontdir in .sfrotzrc to work relative to user's home directory.
+
+- Fixed problem with memory allocation leading to crashes in DOS.
+
+- Fixed problem with DOS Frotz creating non-portable Quetzal files.
+
+
+Summary of changes between Frotz 2.43 and Frotz 2.44:
+=====================================================
+
+Frotz 2.44 was released on Sunday May 17, 2015.
+
+NEW FEATURES
+
+- Blorb support implemented.  No support for audio in Blorb files yet.
+
+- Added an -m option for Dumb Frotz to suppress the [MORE] prompt.
+
+- Makefile and code for compiling for 16-bit DOS.
+
+- DOS Frotz now distributed in the same source file as Unix Frotz.
+
+
+BUG FIXES
+
+- Fixed a problem with saving and restoring in certain games.
+
+- Added some fflush() calls to make Dumb Frotz more suitable for bot use.
+
+- Removed old-style save support.  It was getting hard to manage.  Only
+  the Quetzal save file format is supported now.
+
+- Fixed assorted minor 64-bitness problems.
+
+- Makefile cleaned up.
+
+
 Summary of changes between Unix Frotz 2.42 and Unix Frotz 2.43:
 ===============================================================
 
@@ -104,7 +209,7 @@ NEW FEATURES
 
 BUG FIXES AND MINOR ENHANCEMENTS
 
-- In BUGS, an idiosyncracy of "Journey" by Infocom was mistakenly
+- In BUGS, an idiosyncrasy of "Journey" by Infocom was mistakenly
   identified as a bug in Frotz.
   (Reported by someone whom I forget)
 
@@ -198,5 +303,5 @@ NEW FEATURES
 
 - Faster undo functionality (borrowed from Nitfol).
 
-- History searchs has been added.  Type the beginning of a past command
+- History searches have been added.  Type the beginning of a past command
   and hit the up or down arrow key.

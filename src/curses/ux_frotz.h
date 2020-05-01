@@ -5,13 +5,18 @@
  *
  */
 
+#ifndef UX_FROTZ_H
+#define UX_FROTZ_H
+
+#include <signal.h>
+
 #include "../common/frotz.h"
 #include "../blorb/blorb.h"
+#include "../blorb/blorblow.h"
 #include "ux_setup.h"
 
 #define MASTER_CONFIG		"frotz.conf"
 #define USER_CONFIG		".frotzrc"
-
 #define ASCII_DEF		1
 #define ATTRIB_ASSIG_DEF	0
 #define ATTRIB_TEST_DEF		0
@@ -22,7 +27,7 @@
 #define TANDY_DEF		0
 #define OBJ_MOVE_DEF		0
 #define OBJ_LOC_DEF		0
-#define BACKGROUND_DEF		BLUE_COLOUR
+#define BACKGROUND_DEF		BLACK_COLOUR
 #define FOREGROUND_DEF		WHITE_COLOUR
 #define HEIGHT_DEF		-1	/* let curses figure it out */
 #define CONTEXTLINES_DEF	0
@@ -58,10 +63,8 @@
 #define	PATH1		"ZCODE_PATH"
 #define PATH2		"INFOCOM_PATH"
 
-#define NO_SOUND
-#ifdef OSS_SOUND
-# undef NO_SOUND
-#endif
+#define MAX(x,y) ((x)>(y)) ? (x) : (y)
+#define MIN(x,y) ((x)<(y)) ? (x) : (y)
 
 /* Some regular curses (not ncurses) libraries don't do this correctly. */
 #ifndef getmaxyx
@@ -78,33 +81,23 @@ extern char *gamepath;	/* use to find sound files */
 extern f_setup_t f_setup;
 extern u_setup_t u_setup;
 
-
-/*** Blorb related stuff ***/
-bb_err_t	blorb_err;
-bb_map_t	*blorb_map;
-bb_result_t	blorb_res;
-
+extern volatile sig_atomic_t terminal_resized;
 
 /*** Functions specific to the Unix port of Frotz ***/
 
 bool unix_init_pictures(void);		/* ux_pic.c */
-bool unix_init_pictures(void);		/* ux_pic.c */
-void unix_init_scrollback(void);	/* ux_screen.c */
-void unix_save_screen(int);		/* ux_screen.c */
-void unix_do_scrollback(void);		/* ux_screen.c */
+// void unix_init_scrollback(void);	/* ux_screen.c */
+// void unix_save_screen(int);		/* ux_screen.c */
+// void unix_do_scrollback(void);		/* ux_screen.c */
+void unix_resize_display(void);		/* ux_screen.c */
+void unix_suspend_program(void);        /* ux_screen.c */
+void unix_get_terminal_size(void);      /* ux_init.c */
 
+FILE *os_path_open(const char *, const char *);
 
-
-int     getconfig(char *);
-int     geterrmode(char *);
-int     getcolor(char *);
-int     getbool(char *);
-FILE	*pathopen(const char *, const char *, const char *, char *);
-void	sigwinch_handler(int);
-void    sigint_handler(int);
-void	redraw(void);
-
-
-#ifdef NO_MEMMOVE
-void *memmove(void *, void *);
+#ifdef NO_STRRCHR
+char *my_strrchr(const char *, int);
+#define strrchr my_strrchr
 #endif
+
+#endif /* UX_FROTZ_H */

@@ -1,11 +1,16 @@
-/* dumb-frotz.h
- * $Id: dumb-frotz.h,v 1.1.1.1 2002/03/26 22:38:34 feedle Exp $
+/*
+ * dfrotz.h
+ *
  * Frotz os functions for a standard C library and a dumb terminal.
  * Now you can finally play Zork Zero on your Teletype.
  *
  * Copyright 1997, 1998 Alembic Petrofsky <alembic@petrofsky.berkeley.ca.us>.
  * Any use permitted provided this notice stays intact.
  */
+
+#ifndef DUMB_DFROTZ_H
+#define DUMB_DFROTZ_H
+
 #include "../common/frotz.h"
 #include <stdio.h>
 #include <stdlib.h>
@@ -14,10 +19,13 @@
 #include <ctype.h>
 #include <time.h>
 
+#define MAX(x,y) ((x)>(y)) ? (x) : (y)
+#define MIN(x,y) ((x)<(y)) ? (x) : (y)
+
 /* from ../common/setup.h */
 extern f_setup_t f_setup;
 
-bool do_more_prompts;
+extern bool do_more_prompts;
 
 /* From input.c.  */
 bool is_terminator (zchar);
@@ -36,7 +44,9 @@ void dumb_dump_screen(void);
 void dumb_display_user_input(char *);
 void dumb_discard_old_input(int num_chars);
 void dumb_elide_more_prompt(void);
-void dumb_set_picture_cell(int row, int col, char c);
+void dumb_set_picture_cell(int row, int col, zchar c);
 
 /* dumb-pic.c */
-void dumb_init_pictures(char *graphics_filename);
+bool dumb_init_pictures(void);
+
+#endif

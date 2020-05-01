@@ -15,7 +15,8 @@
  *
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA
+ * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
+ * Or visit http://www.fsf.org/
  */
 
 #define __UNIX_PORT_FILE
@@ -24,6 +25,8 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "ux_defines.h"
+
 #ifdef USE_NCURSES_H
 #include <ncurses.h>
 #else
@@ -31,6 +34,10 @@
 #endif
 
 #include "ux_frotz.h"
+
+extern void restart_header(void);
+
+static WINDOW *saved_screen = NULL;
 
 /*
  * os_erase_area
@@ -43,39 +50,40 @@
  * being erased.  This is not relevant for the curses interface.
  *
  */
-
-void os_erase_area (int top, int left, int bottom, int right, int win)
+void os_erase_area(int top, int left, int bottom, int right, int UNUSED(win))
 {
-    int y, x, i, j;
+	int y, x, i, j;
 
-    /* Catch the most common situation and do things the easy way */
-    if ((top == 1) && (bottom == h_screen_rows) &&
-	(left == 1) && (right == h_screen_cols)) {
+	/* Catch the most common situation and do things the easy way */
+	if ((top == 1) && (bottom == z_header.screen_rows) &&
+		(left == 1) && (right == z_header.screen_cols)) {
 #ifdef COLOR_SUPPORT
-      /* Only set the curses background when doing an erase, so it won't
-       * interfere with the copying we do in os_scroll_area.
-       */
-      bkgdset(u_setup.current_color | ' ');
-      erase();
-      bkgdset(0);
+		/* Only set the curses background when doing an erase,
+		 * so it won't interfere with the copying we do in
+		 * os_scroll_area.
+		 */
+		bkgdset(u_setup.current_color | ' ');
+		erase();
+		bkgdset(0);
 #else
-      erase();
+		erase();
 #endif
-    } else {
-        /* Sigh... */
-	int saved_style = u_setup.current_text_style;
-	os_set_text_style(u_setup.current_color);
-	getyx(stdscr, y, x);
-	top--; left--; bottom--; right--;
-	for (i = top; i <= bottom; i++) {
-	  move(i, left);
-	  for (j = left; j <= right; j++)
-	    addch(' ');
+	} else {
+		/* Sigh... */
+		int saved_style = u_setup.current_text_style;
+		os_set_text_style(u_setup.current_color);
+		getyx(stdscr, y, x);
+		top--; left--; bottom--; right--;
+		for (i = top; i <= bottom; i++) {
+			move(i, left);
+			for (j = left; j <= right; j++)
+				addch(' ');
+		}
+		move(y, x);
+		os_set_text_style(saved_style);
 	}
-	move(y, x);
-	os_set_text_style(saved_style);
-    }
-}/* os_erase_area */
+} /* os_erase_area */
+
 
 /*
  * os_scroll_area
@@ -85,48 +93,149 @@ void os_erase_area (int top, int left, int bottom, int right, int win)
  * colour. Top left coordinates are (1,1). The cursor stays put.
  *
  */
-
-void os_scroll_area (int top, int left, int bottom, int right, int units)
+void os_scroll_area(int top, int left, int bottom, int right, int units)
 {
-  top--; left--; bottom--; right--;
+	top--; left--; bottom--; right--;
 
-  if ((left == 0) && (right == h_screen_cols - 1)) {
-    static int old_scroll_top = 0;
-    static int old_scroll_bottom = 0;
+	if ((left == 0) && (right == z_header.screen_cols - 1)) {
+		static int old_scroll_top = 0;
+		static int old_scroll_bottom = 0;
 
-    if (!((old_scroll_top == top) && (old_scroll_bottom == bottom))) {
-        old_scroll_top = top; old_scroll_bottom = bottom;
-        setscrreg(top, bottom);
-    }
-    scrollok(stdscr, TRUE);
-    scrl(units);
-    scrollok(stdscr, FALSE);
-  } else {
-    int row, col, x, y;
-    chtype ch;
+		if (!((old_scroll_top == top) && (old_scroll_bottom == bottom))) {
+			old_scroll_top = top; old_scroll_bottom = bottom;
+			setscrreg(top, bottom);
+		}
+		scrollok(stdscr, TRUE);
+		scrl(units);
+		scrollok(stdscr, FALSE);
+	} else {
+		int row, col, x, y;
+		chtype ch;
 
-    getyx(stdscr, y, x);
-    /* Must turn off attributes during copying.  */
-    attrset(0);
-    if (units > 0) {
-      for (row = top; row <= bottom - units; row++)
-	for (col = left; col <= right; col++) {
-	  ch = mvinch(row + units, col);
-	  mvaddch(row, col, ch);
+		getyx(stdscr, y, x);
+		/* Must turn off attributes during copying.  */
+		attrset(0);
+		if (units > 0) {
+			for (row = top; row <= bottom - units; row++) {
+				for (col = left; col <= right; col++) {
+					ch = mvinch(row + units, col);
+					mvaddch(row, col, ch);
+				}
+			}
+		} else if (units < 0) {
+			for (row = bottom; row >= top - units; row--) {
+				for (col = left; col <= right; col++) {
+					ch = mvinch(row + units, col);
+					mvaddch(row, col, ch);
+				}
+			}
+		}
+		/* Restore attributes.  */
+		os_set_text_style(u_setup.current_text_style);
+		move(y, x);
 	}
-    } else if (units < 0) {
-      for (row = bottom; row >= top - units; row--)
-	for (col = left; col <= right; col++) {
-	  ch = mvinch(row + units, col);
-	  mvaddch(row, col, ch);
+	if (units > 0)
+		os_erase_area(bottom - units + 2, left + 1, bottom + 1, right + 1, 0);
+	else if (units < 0)
+		os_erase_area(top + 1, left + 1, top - units, right + 1, 0);
+} /* os_scroll_area */
+
+
+static void save_screen(void)
+{
+	if ((saved_screen = newpad(z_header.screen_rows, z_header.screen_cols))
+		&& overwrite(stdscr, saved_screen) == ERR) {
+		delwin(saved_screen);
+		saved_screen = NULL;
 	}
-    }
-    /* Restore attributes.  */
-    os_set_text_style(u_setup.current_text_style);
-    move(y, x);
-  }
-  if (units > 0)
-    os_erase_area(bottom - units + 2, left + 1, bottom + 1, right + 1, 0);
-  else if (units < 0)
-    os_erase_area(top + 1, left + 1, top - units, right + 1, 0);
-}/* os_scroll_area */
+	if (saved_screen) {
+		int y, x;
+		getyx(stdscr, y, x);
+		wmove(saved_screen, y, x);
+	}
+} /* save_screen */
+
+
+static void resize_restore_screen(void)
+{
+	unix_get_terminal_size();
+	resize_screen();
+	if (zmp != NULL)
+		restart_header();
+	if (saved_screen) {
+		delwin(saved_screen);
+		saved_screen = NULL;
+	}
+} /* resize_restore_screen */
+
+
+/**
+ * Resize the display and redraw.  Retain the old screen starting from the
+ * top left.  Call resize_screen, which may repaint more accurately.
+ */
+void unix_resize_display(void)
+{
+	save_screen();
+	endwin();
+	refresh();
+	resize_restore_screen();
+} /* unix_redraw_display */
+
+
+/**
+ * Suspend ourselves.  Save the screen and raise SIGTSTP.
+ * Upon continuing restore the screen as in unix_resize_display; the terminal
+ * size may have changed while we were stopped.
+ */
+void unix_suspend_program(void)
+{
+	save_screen();
+	raise(SIGTSTP);
+	resize_restore_screen();
+}
+
+
+/**
+ * Repaint a window.
+ *
+ * This can only be called from resize_screen.  It copies part of the screen
+ * as it was before the resize onto the current screen.  The source and
+ * destination rectangles may start at different rows but the columns
+ * are the same.  Positions are 1-based.  win should be the index
+ * of the window that is being repainted.  If it equals the current window,
+ * the saved cursor position adjusted by ypos_new - ypos_old is also restored.
+ *
+ * The copied rectangle is clipped to the saved window size.  Returns true
+ * on success, false if anything went wrong.
+ */
+bool os_repaint_window(int win, int ypos_old, int ypos_new, int xpos,
+                       int ysize, int xsize)
+{
+	int lines, cols;
+	if (!saved_screen)
+		return FALSE;
+	if (xsize == 0 || ysize == 0)
+		return TRUE;
+	getmaxyx(saved_screen, lines, cols);
+	ypos_old--, ypos_new--, xpos--;
+	if (xpos + xsize > cols)
+		xsize = cols - xpos;
+	if (ypos_old + ysize > lines)
+		ysize = lines - ypos_old;
+	/* Most of the time we are in os_read_line, where the cursor
+	 * position is different from that in the window properties.
+	 * So use the real cursor position.
+	 */
+	if (win == cwin) {
+		int y, x;
+		getyx(saved_screen, y, x);
+		y += ypos_new - ypos_old;
+		if (y >= ypos_new && y< ypos_new + ysize
+			&& x >= xpos && x < xpos + xsize)
+			move(y, x);
+	}
+	if (xsize <= 0 || ysize <= 0)
+		return FALSE;
+	return copywin(saved_screen, stdscr, ypos_old, xpos, ypos_new, xpos,
+		ypos_new + ysize - 1, xpos + xsize - 1, FALSE) != ERR;
+} /* os_repaint_window */

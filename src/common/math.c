@@ -15,7 +15,7 @@
  *
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA
+ * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
 #include "frotz.h"
@@ -27,13 +27,11 @@
  *	zargs[1] = second value
  *
  */
-
-void z_add (void)
+void z_add(void)
 {
+    store((zword) ((short) zargs[0] + (short) zargs[1]));
+} /* z_add */
 
-    store ((zword) ((short) zargs[0] + (short) zargs[1]));
-
-}/* z_add */
 
 /*
  * z_and, bitwise AND operation.
@@ -42,13 +40,11 @@ void z_add (void)
  *	zargs[1] = second value
  *
  */
-
-void z_and (void)
+void z_and(void)
 {
-
     store ((zword) (zargs[0] & zargs[1]));
+} /* z_and */
 
-}/* z_and */
 
 /*
  * z_art_shift, arithmetic SHIFT operation.
@@ -57,16 +53,15 @@ void z_and (void)
  *	zargs[1] = #positions to shift left (positive) or right
  *
  */
-
-void z_art_shift (void)
+void z_art_shift(void)
 {
+	if ((short) zargs[1] > 0)
+		store((zword) ((short) zargs[0] << (short) zargs[1]));
+	else
+		store((zword) ((short) zargs[0] >> - (short) zargs[1]));
 
-    if ((short) zargs[1] > 0)
-	store ((zword) ((short) zargs[0] << (short) zargs[1]));
-    else
-	store ((zword) ((short) zargs[0] >> - (short) zargs[1]));
+} /* z_art_shift */
 
-}/* z_art_shift */
 
 /*
  * z_div, signed 16bit division.
@@ -75,16 +70,14 @@ void z_art_shift (void)
  *	zargs[1] = second value
  *
  */
-
-void z_div (void)
+void z_div(void)
 {
+	if (zargs[1] == 0)
+		runtime_error(ERR_DIV_ZERO);
+	store((zword) ((short) zargs[0] / (short) zargs[1]));
 
-    if (zargs[1] == 0)
-	runtime_error (ERR_DIV_ZERO);
+} /* z_div */
 
-    store ((zword) ((short) zargs[0] / (short) zargs[1]));
-
-}/* z_div */
 
 /*
  * z_je, branch if the first value equals any of the following.
@@ -95,16 +88,14 @@ void z_div (void)
  *	zargs[3] = fourth value (optional)
  *
  */
-
-void z_je (void)
+void z_je(void)
 {
+	branch (
+		zargc > 1 && (zargs[0] == zargs[1] || (
+		zargc > 2 && (zargs[0] == zargs[2] || (
+		zargc > 3 && (zargs[0] == zargs[3]))))));
+} /* z_je */
 
-    branch (
-	zargc > 1 && (zargs[0] == zargs[1] || (
-	zargc > 2 && (zargs[0] == zargs[2] || (
-	zargc > 3 && (zargs[0] == zargs[3]))))));
-
-}/* z_je */
 
 /*
  * z_jg, branch if the first value is greater than the second.
@@ -113,13 +104,11 @@ void z_je (void)
  *	zargs[1] = second value
  *
  */
-
-void z_jg (void)
+void z_jg(void)
 {
-
-    branch ((short) zargs[0] > (short) zargs[1]);
-
+	branch((short) zargs[0] > (short) zargs[1]);
 }/* z_jg */
+
 
 /*
  * z_jl, branch if the first value is less than the second.
@@ -128,13 +117,11 @@ void z_jg (void)
  *	zargs[1] = second value
  *
  */
-
-void z_jl (void)
+void z_jl(void)
 {
+	branch((short) zargs[0] < (short) zargs[1]);
+} /* z_jl */
 
-    branch ((short) zargs[0] < (short) zargs[1]);
-
-}/* z_jl */
 
 /*
  * z_jz, branch if value is zero.
@@ -142,13 +129,12 @@ void z_jl (void)
  * 	zargs[0] = value
  *
  */
-
-void z_jz (void)
+void z_jz(void)
 {
+	branch((short) zargs[0] == 0);
 
-    branch ((short) zargs[0] == 0);
+} /* z_jz */
 
-}/* z_jz */
 
 /*
  * z_log_shift, logical SHIFT operation.
@@ -157,16 +143,14 @@ void z_jz (void)
  *	zargs[1] = #positions to shift left (positive) or right (negative)
  *
  */
-
-void z_log_shift (void)
+void z_log_shift(void)
 {
+	if ((short) zargs[1] > 0)
+		store((zword) (zargs[0] << (short) zargs[1]));
+	else
+		store((zword) (zargs[0] >> - (short) zargs[1]));
+} /* z_log_shift */
 
-    if ((short) zargs[1] > 0)
-	store ((zword) (zargs[0] << (short) zargs[1]));
-    else
-	store ((zword) (zargs[0] >> - (short) zargs[1]));
-
-}/* z_log_shift */
 
 /*
  * z_mod, remainder after signed 16bit division.
@@ -175,16 +159,14 @@ void z_log_shift (void)
  *	zargs[1] = second value
  *
  */
-
 void z_mod (void)
 {
+	if (zargs[1] == 0)
+		runtime_error(ERR_DIV_ZERO);
 
-    if (zargs[1] == 0)
-	runtime_error (ERR_DIV_ZERO);
+	store((zword) ((short) zargs[0] % (short) zargs[1]));
+} /* z_mod */
 
-    store ((zword) ((short) zargs[0] % (short) zargs[1]));
-
-}/* z_mod */
 
 /*
  * z_mul, 16bit multiplication.
@@ -193,13 +175,11 @@ void z_mod (void)
  *	zargs[1] = second value
  *
  */
-
-void z_mul (void)
+void z_mul(void)
 {
+	store((zword) ((short) zargs[0] * (short) zargs[1]));
+} /* z_mul */
 
-    store ((zword) ((short) zargs[0] * (short) zargs[1]));
-
-}/* z_mul */
 
 /*
  * z_not, bitwise NOT operation.
@@ -207,13 +187,11 @@ void z_mul (void)
  * 	zargs[0] = value
  *
  */
-
 void z_not (void)
 {
+	store((zword) ~zargs[0]);
+} /* z_not */
 
-    store ((zword) ~zargs[0]);
-
-}/* z_not */
 
 /*
  * z_or, bitwise OR operation.
@@ -222,28 +200,24 @@ void z_not (void)
  *	zargs[1] = second value
  *
  */
-
-void z_or (void)
+void z_or(void)
 {
+	store((zword) (zargs[0] | zargs[1]));
+} /* z_or */
 
-    store ((zword) (zargs[0] | zargs[1]));
-
-}/* z_or */
 
 /*
- * z_sub, 16bit substraction.
+ * z_sub, 16bit subtraction.
  *
  *	zargs[0] = first value
  *	zargs[1] = second value
  *
  */
-
-void z_sub (void)
+void z_sub(void)
 {
+	store((zword) ((short) zargs[0] - (short) zargs[1]));
+} /* z_sub */
 
-    store ((zword) ((short) zargs[0] - (short) zargs[1]));
-
-}/* z_sub */
 
 /*
  * z_test, branch if all the flags of a bit mask are set in a value.
@@ -252,10 +226,7 @@ void z_sub (void)
  *	zargs[1] = bit mask
  *
  */
-
-void z_test (void)
+void z_test(void)
 {
-
-    branch ((zargs[0] & zargs[1]) == zargs[1]);
-
-}/* z_test */
+	branch((zargs[0] & zargs[1]) == zargs[1]);
+} /* z_test */

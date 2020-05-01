@@ -1,351 +1,558 @@
-# Define your C compiler.  I recommend gcc if you have it.
-# MacOS users should use "cc" even though it's really "gcc".
+# Makefile for Unix Frotz
+# GNU make is required.
+
+# Your C compiler
+#CC ?= gcc
+#CC ?= clang
+
+# Enable compiler warnings. This is an absolute minimum.
+CFLAGS += -Wall -std=c99 -O3 #-Wextra
+
+# Define your optimization flags.
 #
-CC = gcc
-#CC = cc
+# These are good for regular use.
+#CFLAGS += -O2 -fomit-frame-pointer -falign-functions=2 -falign-loops=2 -falign-jumps=2
+# These are handy for debugging.
+CFLAGS += -g
 
-# Define your optimization flags.  Most compilers understand -O and -O2,
-# Standard (note: Solaris on UltraSparc using gcc 2.8.x might not like this.)
-#
-OPTS = -O2
+# Define where you want Frotz installed
+PREFIX ?= /usr/local
+MANDIR ?= $(PREFIX)/share/man
+BINDIR ?= $(PREFIX)/bin
+#BINDIR ?= $(PREFIX)/games
+MAN_PREFIX ?= $(PREFIX)/share
+SYSCONFDIR ?= /etc
 
-# Pentium with gcc 2.7.0 or better
-#OPTS = -O2 -fomit-frame-pointer -malign-functions=2 -malign-loops=2 \
-#-malign-jumps=2
+# Choose your sound support
+# OPTIONS: ao, none
+SOUND_TYPE ?= ao
 
-# Define where you want Frotz installed.  Usually this is /usr/local
-PREFIX = /usr/local
 
-MAN_PREFIX = $(PREFIX)
-#MAN_PREFIX = /usr/local/share
+##########################################################################
+# The configuration options below are intended mainly for older flavors
+# of Unix.  For Linux, BSD, and Solaris released since 2003, you can
+# ignore this section.
+##########################################################################
 
-CONFIG_DIR = $(PREFIX)/etc
-#CONFIG_DIR = /etc
+# Default sample rate for sound effects.
+# All modern sound interfaces can be expected to support 44100 Hz sample
+# rates.  Earlier ones, particularly ones in Sun 4c workstations support
+# only up to 8000 Hz.
+SAMPLERATE ?= 44100
 
-# Define where you want Frotz to look for frotz.conf.
-#
-CONFIG_DIR = /usr/local/etc
-#CONFIG_DIR = /etc
-#CONFIG_DIR = /usr/pkg/etc
-#CONFIG_DIR =
+# Audio buffer size in frames
+BUFFSIZE ?= 4096
 
-# Uncomment this if you want color support.  Most, but not all curses
-# libraries that work with Frotz will support color.
-#
-COLOR_DEFS = -DCOLOR_SUPPORT
+# Default sample rate converter type
+DEFAULT_CONVERTER ?= SRC_SINC_MEDIUM_QUALITY
 
-# Uncomment this if you have an OSS soundcard driver and want classical
-# Infocom sound support.
-#
-#SOUND_DEFS = -DOSS_SOUND
+# Comment this out if you don't want UTF-8 support
+USE_UTF8 ?= yes
 
-# Uncomment this too if you're running BSD of some sort and are using
-# the OSS sound driver.
-#
-#SOUND_LIB = -lossaudio
+# Comment this out if your machine's version of curses doesn't support color.
+COLOR ?= yes
 
-# Define your sound device
-# This should probably be a command-line/config-file option.
-#
-#SOUND_DEV = /dev/dsp
-#SOUND_DEV = /dev/sound
-#SOUND_DEV = /dev/audio
+# Select your chosen version of curses.  Unless something old is going
+# on, ncursesw should be used because that's how UTF8 is supported.
+#CURSES ?= curses
+#CURSES ?= ncurses
+CURSES ?= ncursesw
 
-# If your vendor-supplied curses library won't work, uncomment the
-# location where ncurses.h is.
-#
-#INCL = -I/usr/local/include
-#INCL = -I/usr/pkg/include
-#INCL = -I/usr/freeware/include
-#INCL = -I/5usr/include
-#INCL = -I/path/to/ncurses.h
+# This Makefile uses the pkg-config utility to get information on
+# installed libraries.  If your system is missing that utility and
+# cannot install it for whatever reason (usually very old ones), you
+# will need to uncomment and perhaps modify some of these lines.
+# I don't see any way around not having pkg-config for SDL.
+#CURSES_LDLAGS += -l$(CURSES) -ltinfo
+#CURSES_CFLAGS += -D_DEFAULT_SOURCE -D_XOPEN_SOURCE=600
 
-# If your vendor-supplied curses library won't work, uncomment the
-# location where the ncurses library is.
-#
-#LIB = -L/usr/local/lib
-#LIB = -L/usr/pkg/lib
-#LIB = -L/usr/freeware/lib
-#LIB = -L/5usr/lib
-#LIB = -L/path/to/libncurses.so
+# Uncomment this to disable Blorb support for dumb and curses interfaces.
+# SDL interface always has Blorb support.
+#NO_BLORB = yes
 
-# One of these must always be uncommented.  If your vendor-supplied
-# curses library won't work, comment out the first option and uncomment
-# the second.
-#
-CURSES = -lcurses
-#CURSES = -lncurses
+# These are for enabling local version of certain functions which may be
+# missing or behave differently from what's expected in modern system.
+# If you're running on a system made in the past 20 years, you should be
+# safe leaving these alone.  If not or you're using something modern,
+# but very strange intended for very limited machines, you probably know
+# what you're doing.  Therefore further commentary on what these
+# functions do is probably not necessary.
 
-# Uncomment this if your need to use ncurses instead of the
-# vendor-supplied curses library.  This just tells the compile process
-# which header to include, so don't worry if ncurses is all you have
-# (like on Linux).  You'll be fine.
-#
-#CURSES_DEF = -DUSE_NCURSES_H
+# For missing memmove()
+#NO_MEMMOVE = yes
 
-# Uncomment this if you're compiling Unix Frotz on a machine that lacks
-# the memmove(3) system call.  If you don't know what this means, leave it
-# alone.
-#
-#MEMMOVE_DEF = -DNO_MEMMOVE
+# For missing strdup() and strndup()
+#NO_STRDUP = yes
 
-# Uncomment this if for some wacky reason you want to compile Unix Frotz
-# under Cygwin under Windoze.  This sort of thing is not reccomended.
-#
-#EXTENSION = .exe
+# For missing strrchr()
+#NO_STRRCHR = yes
 
-SDLINC = `sdl-config --cflags`
-FTCFLAGS = `freetype-config --cflags`
-FTLIBS = `freetype-config --libs`
+# Uncomment to disable format codes for dumb interface
+#DISABLE_FORMATS = yes
 
-SDL_DEFS = $(SDLINC) $(FTCFLAGS) $(FTLIBS)
-SDL_LIBS = -ljpeg -lpng -lz -lSDL -lSDL_mixer
+# Assorted constants
+MAX_UNDO_SLOTS = 500
+MAX_FILE_NAME = 80
+TEXT_BUFFER_SIZE = 512
+INPUT_BUFFER_SIZE = 200
+STACK_SIZE = 1024
 
-#####################################################
-# Nothing under this line should need to be changed.
-#####################################################
 
-SRCDIR = src
+#########################################################################
+# This section is where Frotz is actually built.
+# Under normal circumstances, nothing in this section should be changed.
+#########################################################################
 
-VERSION = 2.44pre
+# Determine what system we are on.
+ifneq ($(OS),Windows_NT)
+    RANLIB ?= $(shell which ranlib)
+    AR ?= $(shell which ar)
+    PKG_CONFIG ?= pkg-config
+    # For now, assume !windows == unix.
+    OS_TYPE ?= unix
+    UNAME_S := $(shell uname -s)
+    # Since MacOS lacks pkg-config, pick CURSES_LDFLAGS that's known to work.
+    ifeq ($(UNAME_S),Darwin)
+	MACOS = yes
+	# On MACOS, curses is actually ncurses, but to get wide char support
+	# you need to define _XOPEN_SOURCE_EXTENDED
+	CURSES = curses
+	CFLAGS += -D_XOPEN_SOURCE_EXTENDED -DMACOS -I/opt/local/include \
+		-D_DARWIN_C_SOURCE -D_XOPEN_SOURCE=600
+	LDFLAGS += -L/opt/local/lib
+	CURSES_LDFLAGS += -lcurses
+    else
+    # If we have pkg-config, that good.  Otherwise maybe warn later.
+    ifneq (, $(shell which $(PKG_CONFIG)))
+	CURSES_LDFLAGS += $(shell $(PKG_CONFIG) $(CURSES) --libs)
+	CURSES_CFLAGS += $(shell $(PKG_CONFIG) $(CURSES) --cflags)
+    else
+	NO_PKG_CONFIG = yes
+    endif
+    # NetBSD
+    ifeq ($(UNAME_S),NetBSD)
+	NETBSD = yes
+	CFLAGS += -D_NETBSD_SOURCE -I/usr/pkg/include
+	LDFLAGS += -Wl,-R/usr/pkg/lib -L/usr/pkg/lib
+	SDL_LDFLAGS += -lexecinfo
+	ifeq ($(CURSES), ncursesw)
+	    CURSES_CFLAGS += -I/usr/pkg/include/ncursesw
+	else
+	    CURSES_CFLAGS += -I/usr/pkg/include/ncurses
+	endif
+    endif
+    # FreeBSD
+    ifeq ($(UNAME_S),FreeBSD)
+	FREEBSD = yes
+	CFLAGS += -I/usr/local/include -D__BSD_VISIBLE=1
+	LDFLAGS += -L/usr/local/lib
+	SDL_LDFLAGS += -lexecinfo
+    endif
+    # OpenBSD
+    ifeq ($(UNAME_S),OpenBSD)
+	OPENBSD = yes
+	NO_EXECINFO_H = yes
+	NO_UCONTEXT_H = yes
+	NO_IMMINTRIN_H = yes
+	CFLAGS += -I/usr/local/include
+	LDFLAGS += -L/usr/local/lib
+	SDL_CFLAGS += -DSDL_DISABLE_IMMINTRIN_H
+	SDL_LDFLAGS += -lexecinfo
+    endif
+    # Linux
+    ifeq ($(UNAME_S),Linux)
+	LINUX = yes
+	CFLAGS += -D_POSIX_C_SOURCE=200809L
+	NPROCS = $(shell grep -c ^processor /proc/cpuinfo)
+    endif
+    endif
+endif
+
+# Make sure the right curses include file is included.
+ifeq ($(CURSES), curses)
+  CURSES_DEFINE = USE_CURSES_H
+else ifneq ($(findstring ncurses,$(CURSES)),)
+  CURSES_CFLAGS += -D_XOPEN_SOURCE_EXTENDED
+  CURSES_DEFINE = USE_NCURSES_H
+endif
+
+export CC
+export CFLAGS
+export CURSES_CFLAGS
+export NPROCS
+export MAKEFLAGS
+export AR
+export RANLIB
+export PREFIX
+export MANDIR
+export SYSCONFDIR
+export SDL_CFLAGS
+export COLOR
+export SOUND_TYPE
+export NO_SOUND
 
 NAME = frotz
-BINNAME = $(NAME)
+VERSION = 2.51
 
-DISTFILES = bugtest
 
-DISTNAME = $(BINNAME)-$(VERSION)
-distdir = $(DISTNAME)
+# If we're working from git, we have access to proper variables. If
+# not, make it clear that we're working from a release.
+#
+GIT_DIR ?= .git
+ifneq ($(and $(wildcard $(GIT_DIR)),$(shell which git)),)
+	GIT_HASH = $(shell git rev-parse HEAD)
+	GIT_HASH_SHORT = $(shell git rev-parse --short HEAD)
+	GIT_DATE = $(shell git show -s --format=%ci)
+else
+	GIT_HASH = "$Format:%H$"
+	GIT_HASH_SHORT = "$Format:%h$"
+	GIT_DATE = "$Format:%ci$"
+endif
+export CFLAGS
 
+
+# Source locations
+#
+SRCDIR = src
 COMMON_DIR = $(SRCDIR)/common
-COMMON_TARGET = $(SRCDIR)/frotz_common.a
-COMMON_OBJECT = $(COMMON_DIR)/buffer.o \
-		$(COMMON_DIR)/err.o \
-		$(COMMON_DIR)/fastmem.o \
-		$(COMMON_DIR)/files.o \
-		$(COMMON_DIR)/hotkey.o \
-		$(COMMON_DIR)/input.o \
-		$(COMMON_DIR)/main.o \
-		$(COMMON_DIR)/math.o \
-		$(COMMON_DIR)/object.o \
-		$(COMMON_DIR)/process.o \
-		$(COMMON_DIR)/quetzal.o \
-		$(COMMON_DIR)/random.o \
-		$(COMMON_DIR)/redirect.o \
-		$(COMMON_DIR)/screen.o \
-		$(COMMON_DIR)/sound.o \
-		$(COMMON_DIR)/stream.o \
-		$(COMMON_DIR)/table.o \
-		$(COMMON_DIR)/text.o \
-		$(COMMON_DIR)/variable.o
+COMMON_LIB = $(COMMON_DIR)/frotz_common.a
+COMMON_DEFINES = $(COMMON_DIR)/defs.h
+HASH = $(COMMON_DIR)/git_hash.h
+
+BLORB_DIR = $(SRCDIR)/blorb
+BLORB_LIB = $(BLORB_DIR)/blorblib.a
 
 CURSES_DIR = $(SRCDIR)/curses
-CURSES_TARGET = $(SRCDIR)/frotz_curses.a
-CURSES_OBJECT = $(CURSES_DIR)/ux_init.o \
-		$(CURSES_DIR)/ux_input.o \
-		$(CURSES_DIR)/ux_pic.o \
-		$(CURSES_DIR)/ux_screen.o \
-		$(CURSES_DIR)/ux_text.o \
-		$(CURSES_DIR)/ux_blorb.o \
-		$(CURSES_DIR)/ux_audio_none.o \
-		$(CURSES_DIR)/ux_audio_oss.o
+CURSES_LIB = $(CURSES_DIR)/frotz_curses.a
+CURSES_DEFINES = $(CURSES_DIR)/ux_defines.h
 
 DUMB_DIR = $(SRCDIR)/dumb
-DUMB_TARGET = $(SRCDIR)/frotz_dumb.a
-DUMB_OBJECT =	$(DUMB_DIR)/dumb_init.o \
-		$(DUMB_DIR)/dumb_input.o \
-		$(DUMB_DIR)/dumb_output.o \
-		$(DUMB_DIR)/dumb_pic.o
+DUMB_LIB = $(DUMB_DIR)/frotz_dumb.a
 
 SDL_DIR = $(SRCDIR)/sdl
-SDL_TARGET = $(SRCDIR)/frotz_sdl.a
-SDL_OBJECT =	$(SDL_DIR)/sf_aiffwav.o \
-		$(SDL_DIR)/sf_deffont.o \
-		$(SDL_DIR)/sf_font3.o \
-		$(SDL_DIR)/sf_fonts.o \
-		$(SDL_DIR)/sf_ftype.o \
-		$(SDL_DIR)/sf_images.o \
-		$(SDL_DIR)/sf_msg_en.o \
-		$(SDL_DIR)/sf_osfdlg.o \
-		$(SDL_DIR)/sf_resample.o \
-		$(SDL_DIR)/sf_resource.o \
-		$(SDL_DIR)/sf_sig.o \
-		$(SDL_DIR)/sf_sound.o \
-		$(SDL_DIR)/sf_util.o \
-		$(SDL_DIR)/sf_video.o
+SDL_LIB = $(SDL_DIR)/frotz_sdl.a
+export SDL_PKGS = libpng libjpeg sdl2 SDL2_mixer freetype2 zlib
+SDL_LDFLAGS += $(shell $(PKG_CONFIG) $(SDL_PKGS) --libs) -lm
 
-# Blorb file handling
+DOS_DIR = $(SRCDIR)/dos
+
+SUBDIRS = $(COMMON_DIR) $(CURSES_DIR) $(SDL_DIR) $(DUMB_DIR) $(BLORB_DIR) $(DOS_DIR)
+SUB_CLEAN = $(SUBDIRS:%=%-clean)
+
+FROTZ_BIN = frotz$(EXTENSION)
+DFROTZ_BIN = dfrotz$(EXTENSION)
+SFROTZ_BIN = sfrotz$(EXTENSION)
+DOS_BIN = frotz.exe
+
+FROTZ_LIBS  = $(COMMON_LIB) $(CURSES_LIB) $(BLORB_LIB) $(COMMON_LIB)
+DFROTZ_LIBS = $(COMMON_LIB) $(DUMB_LIB) $(BLORB_LIB) $(COMMON_LIB)
+SFROTZ_LIBS = $(COMMON_LIB) $(SDL_LIB) $(BLORB_LIB) $(COMMON_LIB)
+
+
+ifdef NO_BLORB
+  SOUND_TYPE = none
+  CURSES_SOUND = disabled
+  BLORB_SUPPORT = disabled
+  FROTZ_LIBS  = $(COMMON_LIB) $(CURSES_LIB) $(COMMON_LIB)
+  DFROTZ_LIBS = $(COMMON_LIB) $(DUMB_LIB) $(COMMON_LIB)
+else
+  BLORB_SUPPORT = enabled
+endif
+
+ifeq ($(SOUND_TYPE), ao)
+  CURSES_SOUND_LDFLAGS += -lao -lpthread -lm \
+	-lsndfile -lvorbisfile -lmodplug -lsamplerate
+  CURSES_SOUND = enabled
+else
+  CURSES_SOUND = disabled
+endif
+
+# Check to see if the -Orecurse option is available.  It's nice for
+# watching the output of a parallel build, but is otherwise not
+# necessary.
+ifneq ($(filter output-sync,$(value .FEATURES)),)
+MAKEFLAGS += -Orecurse
+endif
+
+# Just the version number without the dot
+DOSVER = $(shell echo $(VERSION) | sed s/\\.//g )
+
+# Build recipes
 #
-BLORB_DIR = $(SRCDIR)/blorb
-BLORB_TARGET =  $(SRCDIR)/blorblib.a
-BLORB_OBJECT =  $(BLORB_DIR)/blorblib.o
+curses: $(FROTZ_BIN)
+ncurses: $(FROTZ_BIN)
+$(FROTZ_BIN): $(FROTZ_LIBS)
+	$(CC) $+ -o $@$(EXTENSION) $(LDFLAGS) $(CURSES_LDFLAGS) $(CURSES_SOUND_LDFLAGS)
+	@echo "** Done building Frotz with curses interface"
+	@echo "** Audio support $(CURSES_SOUND) (type $(SOUND_TYPE))"
+	@echo "** Blorb support $(BLORB_SUPPORT)"
+
+nosound: nosound_helper $(FROTZ_BIN) | nosound_helper
+nosound_helper:
+	$(eval SOUND_TYPE= none)
+	$(eval NO_SOUND= -DNO_SOUND)
+	$(eval CURSES_SOUND_LDFLAGS= )
+	$(eval CURSES_SOUND= disabled)
+
+dumb: $(DFROTZ_BIN)
+$(DFROTZ_BIN): $(DFROTZ_LIBS)
+	$(CC) $+ -o $@$(EXTENSION) $(LDFLAGS)
+	@echo "** Done building Frotz with dumb interface."
+	@echo "** Blorb support $(BLORB_SUPPORT)"
+
+sdl: $(SFROTZ_BIN)
+$(SFROTZ_BIN): $(SFROTZ_LIBS)
+	$(CC) $+ -o $@$(EXTENSION) $(LDFLAGS) $(SDL_LDFLAGS)
+	@echo "** Done building Frotz with SDL interface."
+
+dos: $(DOS_BIN)
+$(DOS_BIN):
+	@echo
+	@echo "  ** Cannot cross-compile for DOS yet."
+	@echo "  ** Copy this zip file, $(NAME)src.zip, into a DOS machine and use Turbo C."
+	@echo "  ** A virtualized DOS machine will do.  This zip file will fit on a single"
+	@echo "  ** double-sided double-density 5.25-inch floppy disk.  Read the file"
+	@echo "  ** DOSBUILD.txt for more information."
+	@echo
+ifneq ($(and $(wildcard $(GIT_DIR)),$(shell which git)),)
+	@git archive --format=zip --prefix $(NAME)src/ HEAD -o $(NAME)src.zip
+	@zip -d $(NAME)src.zip $(NAME)src/src/curses/* \
+		$(NAME)src/src/dumb/* $(NAME)src/src/blorb/* \
+		$(NAME)src/src/sdl/* $(NAME)src/src/misc/* \
+		$(NAME)src/doc/*.6 $(NAME)src/doc/frotz.conf* \
+		$(NAME)src/doc/Xresources  > /dev/null
+else
+	@echo "Not in a git repository or git command not found.  Cannot make a tarball."
+endif
+
+all: $(FROTZ_BIN) $(DFROTZ_BIN) $(SFROTZ_BIN)
+
+common_lib:	$(COMMON_LIB)
+curses_lib:	$(CURSES_LIB)
+sdl_lib:	$(SDL_LIB)
+dumb_lib:	$(DUMB_LIB)
+blorb_lib:	$(BLORB_LIB)
+dos_lib:	$(DOS_LIB)
+
+$(COMMON_LIB): $(COMMON_DEFINES) $(HASH)
+	$(MAKE) -C $(COMMON_DIR)
+
+$(CURSES_LIB): $(COMMON_DEFINES) $(CURSES_DEFINES) $(HASH)
+	$(MAKE) -C $(CURSES_DIR)
+
+$(SDL_LIB): $(COMMON_DEFINES) $(HASH)
+	$(MAKE) -C $(SDL_DIR)
+
+$(DUMB_LIB): $(COMMON_DEFINES) $(HASH)
+	$(MAKE) -C $(DUMB_DIR)
+
+$(BLORB_LIB): $(COMMON_DEFINES)
+	$(MAKE) -C $(BLORB_DIR)
+
+$(SUB_CLEAN):
+	-$(MAKE) -C $(@:%-clean=%) clean
 
 
-TARGETS = $(COMMON_TARGET) $(CURSES_TARGET) $(BLORB_TARGET)
+# Compile-time generated defines and strings
+#
+defs: common_defines
+common_defines: $(COMMON_DEFINES)
+$(COMMON_DEFINES):
+ifeq ($(wildcard $(COMMON_DEFINES)), )
+	@echo "** Generating $@"
+	@echo "#ifndef COMMON_DEFINES_H" > $@
+	@echo "#define COMMON_DEFINES_H" >> $@
+ifeq ($(OS_TYPE), unix)
+	@echo "#define UNIX" >> $@
+endif
+	@echo "#define MAX_UNDO_SLOTS $(MAX_UNDO_SLOTS)" >> $@
+	@echo "#define MAX_FILE_NAME $(MAX_FILE_NAME)" >> $@
+	@echo "#define TEXT_BUFFER_SIZE $(TEXT_BUFFER_SIZE)" >> $@
+	@echo "#define INPUT_BUFFER_SIZE $(INPUT_BUFFER_SIZE)" >> $@
+	@echo "#define STACK_SIZE $(STACK_SIZE)" >> $@
+ifdef NO_BLORB
+	@echo "#define NO_BLORB" >> $@
+endif
+ifdef NO_STRRCHR
+	@echo "#define NO_STRRCHR" >> $@
+endif
+ifdef NO_MEMMOVE
+	@echo "#define NO_MEMMOVE" >> $@
+endif
+ifdef NO_STRDUP
+	@echo "#define NO_STRDUP" >> $@
+endif
+ifdef NO_UCONTEXT_H
+	@echo "#define NO_UCONTEXT_H" >> $@
+endif
+ifdef NO_EXECINFO_H
+	@echo "#define NO_EXECINFO_H" >> $@
+endif
+ifeq ($(USE_UTF8), yes)
+	@echo "#define USE_UTF8" >> $@
+endif
+ifdef DISABLE_FORMATS
+	@echo "#define DISABLE_FORMATS" >> $@
+endif
+	@echo "#endif /* COMMON_DEFINES_H */" >> $@
+endif
 
-OPT_DEFS = -DCONFIG_DIR="\"$(CONFIG_DIR)\"" $(CURSES_DEF) \
-	-DVERSION="\"$(VERSION)\""
 
-CURSES_DEFS = $(OPT_DEFS) $(COLOR_DEFS) $(SOUND_DEFS) $(SOUNDCARD) \
-	$(MEMMOVE_DEF)
+curses_defines: $(CURSES_DEFINES)
+$(CURSES_DEFINES):
+ifeq ($(wildcard $(CURSES_DEFINES)), )
+ifndef CURSES
+	@echo "** ERROR You need to pick a flavor of curses in the Makefile!"
+	exit 1
+endif
+ifdef USE_UTF8
+ifneq ($(CURSES),ncursesw)
+ifndef MACOS
+	@echo "** ERROR UTF-8 support only works with ncursesw!"
+	exit 2
+endif
+endif
+endif
+	@echo "** Generating $@"
+	@echo "#ifndef CURSES_DEFINES_H" > $@
+	@echo "#define CURSES_DEFINES_H" >> $@
+	@echo "#define $(CURSES_DEFINE)" >> $@
+	@echo "#define CONFIG_DIR \"$(SYSCONFDIR)\"" >> $@
+	@echo "#define SOUND_TYPE \"$(SOUND_TYPE)\"" >> $@
+	@echo "#define SAMPLERATE $(SAMPLERATE)" >> $@
+	@echo "#define BUFFSIZE $(BUFFSIZE)" >> $@
+	@echo "#define DEFAULT_CONVERTER $(DEFAULT_CONVERTER)" >> $@
+ifeq ($(SOUND_TYPE), none)
+	@echo "#define NO_SOUND" >> $@
+endif
+ifndef SOUND_TYPE
+	@echo "#define NO_SOUND" >> $@
+endif
+ifdef COLOR
+	@echo "#define COLOR_SUPPORT" >> $@
+endif
+ifeq ($(USE_UTF8), yes)
+	@echo "#define USE_UTF8" >> $@
+endif
+	@echo "#endif /* CURSES_DEFINES_H */" >> $@
+endif
 
-FLAGS = $(OPTS) $(CURSES_DEFS) $(INCL)
+
+hash: $(HASH)
+$(HASH):
+ifeq ($(wildcard $(HASH)), )
+	@echo "** Generating $@"
+	@echo "#define VERSION \"$(VERSION)\"" > $@
+	@echo "#define GIT_HASH \"$(GIT_HASH)\"" >> $@
+	@echo "#define GIT_HASH_SHORT \"$(GIT_HASH_SHORT)\"" >> $@
+	@echo "#define GIT_DATE \"$(GIT_DATE)\"" >> $@
+endif
 
 
-$(NAME): $(NAME)-curses
-curses:  $(NAME)-curses
-$(NAME)-curses: $(COMMON_TARGET) $(CURSES_TARGET) $(BLORB_TARGET)
-	$(CC) -o $(BINNAME)$(EXTENSION) $(TARGETS) $(LIB) $(CURSES) $(SOUND_LIB)
+# Administrative stuff
+#
+install: install_frotz
+install_frotz: $(FROTZ_BIN)
+	install -d $(BINDIR) $(MAN_PREFIX)/man/man6
+	install -c -m 755 $(FROTZ_BIN) $(BINDIR)
+	install -m 644 doc/frotz.6 $(MAN_PREFIX)/man//man6/
 
-dumb:		$(NAME)-dumb
-d$(NAME):	$(NAME)-dumb
-$(NAME)-dumb:		$(COMMON_TARGET) $(DUMB_TARGET)
-	$(CC) -o d$(BINNAME)$(EXTENSION) $(COMMON_TARGET) $(DUMB_TARGET) $(LIB)
+uninstall: uninstall_frotz
+uninstall_frotz:
+	rm -f $(BINDIR)/frotz
+	rm -f $(MAN_PREFIX)/man6/frotz.6
 
-sdl:		$(NAME)-sdl
-s$(NAME):	$(NAME)-sdl
-$(NAME)-sdl:	$(COMMON_TARGET) $(SDL_TARGET) $(BLORB_TARGET)
-	$(CC) -o s$(BINNAME) $(COMMON_TARGET) $(SDL_TARGET) $(BLORB_TARGET) $(SDL_LIBS)
+install_dumb: install_dfrotz
+install_dfrotz: $(DFROTZ_BIN)
+	install -d $(BINDIR) $(MAN_PREFIX)/man/man6
+	install -c -m 755 $(DFROTZ_BIN) $(BINDIR)
+	install -m 644 doc/dfrotz.6 $(MAN_PREFIX)/man/man6/
 
-all:	$(NAME) d$(NAME)
+uninstall_dumb: uninstall_dfrotz
+uninstall_dfrotz:
+	rm -f $(BINDIR)/dfrotz
+	rm -f $(MAN_PREFIX)/man/man6/dfrotz.6
 
+install_sdl: install_sfrotz
+install_sfrotz: $(SFROTZ_BIN)
+	install -d $(BINDIR) $(MAN_PREFIX)/man/man6
+	install $(SFROTZ_BIN) $(BINDIR)
+	install -m 644 doc/sfrotz.6 $(MAN_PREFIX)/man/man6/
+
+uninstall_sdl: uninstall_sfrotz
+uninstall_sfrotz:
+	rm -f $(BINDIR)/sfrotz
+	rm -f $(MAN_PREFIX)/man/man6/sfrotz.6
+
+install_all:	install_frotz install_dfrotz install_sfrotz
+
+uninstall_all:	uninstall_frotz uninstall_dfrotz uninstall_sfrotz
+
+
+dist: $(NAME)-$(VERSION).tar.gz
+frotz-$(VERSION).tar.gz:
+ifneq ($(and $(wildcard $(GIT_DIR)),$(shell which git)),)
+	git archive --format=tgz --prefix $(NAME)-$(VERSION)/ HEAD -o $(NAME)-$(VERSION).tar.gz
+else
+	@echo "Not in a git repository or git command not found.  Cannot make a zip file."
+endif
+
+dosdist:
+	@echo
+	@echo "  ** Populating $(NAME)$(DOSVER) with things for the DOS Frotz precompiled zipfile."
+	@echo "  ** Just add frotz.exe compiled wherever."
+	@echo "  ** Then do \"zip -r $(NAME)$(DOSVER).zip $(NAME)$(DOSVER)\""
+	@echo
+	@mkdir $(NAME)$(DOSVER)
+	@cp ChangeLog $(NAME)$(DOSVER)/changes.txt
+	@cp frotz.lsm $(NAME)$(DOSVER)
+	@cp doc/frotz.txt $(NAME)$(DOSVER)
+	@cp doc/file_id.diz $(NAME)$(DOSVER)
+	@cp HOW_TO_PLAY $(NAME)$(DOSVER)/howto.txt
+	@cp README $(NAME)$(DOSVER)/README.txt
+	@cp AUTHORS $(NAME)$(DOSVER)/AUTHORS.txt
+	@cp COPYING $(NAME)$(DOSVER)/COPYING.txt
+	@unix2dos -q $(NAME)$(DOSVER)/*
+	@touch $(NAME)$(DOSVER)/*
+
+clean: $(SUB_CLEAN)
+	rm -rf $(NAME)-$(VERSION)
+	rm -rf $(COMMON_DEFINES) \
+		$(CURSES_DEFINES) \
+		$(HASH)
+	rm -f FROTZ.BAK FROTZ.EXE FROTZ.LIB FROTZ.DSK *.OBJ
+
+distclean: clean
+	rm -f frotz$(EXTENSION) dfrotz$(EXTENSION) sfrotz$(EXTENSION) a.out
+	rm -rf $(NAME)src $(NAME)$(DOSVER)
+	rm -f $(NAME)*.tar.gz $(NAME)src.zip $(NAME)$(DOSVER).zip
+
+help:
+	@echo "Targets:"
+	@echo "    frotz: (default target) the standard curses edition"
+	@echo "    nosound: the standard curses edition without sound support"
+	@echo "    dumb: for dumb terminals and wrapper scripts"
+	@echo "    sdl: for SDL graphics and sound"
+	@echo "    all: build curses, dumb, and SDL versions"
+	@echo "    dos: Make a zip file containing DOS Frotz source code"
+	@echo "    install"
+	@echo "    uninstall"
+	@echo "    install_dumb"
+	@echo "    uninstall_dumb"
+	@echo "    install_sdl"
+	@echo "    uninstall_sdl"
+	@echo "    install_all"
+	@echo "    uninstall_all"
+	@echo "    clean: clean up files created by compilation"
+	@echo "    distclean: like clean, but also delete executables"
+	@echo "    dist: create a source tarball"
+	@echo ""
 
 .SUFFIXES:
 .SUFFIXES: .c .o .h
 
-$(COMMON_OBJECT): %.o: %.c
-	$(CC) $(OPTS) $(COMMON_DEFS) -o $@ -c $<
-
-$(BLORB_OBJECT): %.o: %.c
-	$(CC) $(OPTS) -o $@ -c $<
-
-$(DUMB_OBJECT): %.o: %.c
-	$(CC) $(OPTS) -o $@ -c $<
-
-$(CURSES_OBJECT): %.o: %.c
-	$(CC) $(OPTS) $(CURSES_DEFS) -o $@ -c $<
-
-$(SDL_OBJECT): %.o: %.c
-	$(CC) $(OPTS) $(SDL_DEFS) -o $@ -c $<
-
-
-# If you're going to make this target manually, you'd better know which
-# config target to make first.
-#
-common_lib:	$(COMMON_TARGET)
-$(COMMON_TARGET): $(COMMON_OBJECT)
-	@echo
-	@echo "Archiving common code..."
-	ar rc $(COMMON_TARGET) $(COMMON_OBJECT)
-	ranlib $(COMMON_TARGET)
-	@echo
-
-curses_lib:	config_curses $(CURSES_TARGET)
-$(CURSES_TARGET): $(CURSES_OBJECT)
-	@echo
-	@echo "Archiving curses interface code..."
-	ar rc $(CURSES_TARGET) $(CURSES_OBJECT)
-	ranlib $(CURSES_TARGET)
-	@echo
-
-dumb_lib:	$(DUMB_TARGET)
-$(DUMB_TARGET): $(DUMB_OBJECT)
-	@echo
-	@echo "Archiving dumb interface code..."
-	ar rc $(DUMB_TARGET) $(DUMB_OBJECT)
-	ranlib $(DUMB_TARGET)
-	@echo
-
-sdl_lib:	$(SDL_TARGET)
-$(SDL_TARGET): $(SDL_OBJECT)
-	@echo
-	@echo "Archiving SDL interface code..."
-	ar rc $(SDL_TARGET) $(SDL_OBJECT)
-	ranlib $(SDL_TARGET)
-	@echo
-
-blorb_lib:	$(BLORB_TARGET)
-$(BLORB_TARGET): $(BLORB_OBJECT)
-	@echo
-	@echo "Archiving Blorb file handling code..."
-	ar rc $(BLORB_TARGET) $(BLORB_OBJECT)
-	ranlib $(BLORB_TARGET)
-	@echo
-
-
-soundcard.h:
-	@if [ ! -f $(SRCDIR)/soundcard.h ] ; then \
-		 sh $(SRCDIR)/misc/findsound.sh $(SRCDIR); \
-	fi
-
-install: $(NAME)
-	strip $(BINNAME)$(EXTENSION)
-	install -d $(PREFIX)/bin
-	install -d $(MAN_PREFIX)/man/man6
-	install -c -m 755 $(BINNAME)$(EXTENSION) $(PREFIX)/bin
-	install -c -m 644 doc/$(NAME).6 $(MAN_PREFIX)/man/man6
-
-uninstall:
-	rm -f $(PREFIX)/bin/$(NAME)
-	rm -f $(MAN_PREFIX)/man/man6/$(NAME).6
-
-deinstall: uninstall
-
-install_dumb: d$(NAME)
-	strip d$(BINNAME)$(EXTENSION)
-	install -d $(PREFIX)/bin
-	install -d $(MAN_PREFIX)/man/man6
-	install -c -m 755 d$(BINNAME)$(EXTENSION) $(PREFIX)/bin
-	install -c -m 644 doc/d$(NAME).6 $(MAN_PREFIX)/man/man6
-
-uninstall_dumb:
-	rm -f $(PREFIX)/bin/d$(NAME)
-	rm -f $(MAN_PREFIX)/man/man6/d$(NAME).6
-
-deinstall_dumb: uninstall_dumb
-
-distro: dist
-
-dist: distclean
-	mkdir $(distdir)
-	@for file in `ls`; do \
-		if test $$file != $(distdir); then \
-			cp -Rp $$file $(distdir)/$$file; \
-		fi; \
-	done
-	find $(distdir) -type l -exec rm -f {} \;
-	tar chof $(distdir).tar $(distdir)
-	gzip -f --best $(distdir).tar
-	rm -rf $(distdir)
-	@echo
-	@echo "$(distdir).tar.gz created"
-	@echo
-
-clean:
-	rm -f $(SRCDIR)/*.h $(SRCDIR)/*.a
-	find . -name *.o -exec rm -f {} \;
-	find . -name *.O -exec rm -f {} \;
-
-distclean: clean
-	rm -f $(BINNAME)$(EXTENSION) d$(BINNAME)$(EXTENSION) s$(BINNAME)
-	rm -f *.EXE *.BAK *.LIB
-	rm -f *.exe *.bak *.lib
-	rm -f *core $(SRCDIR)/*core
-	-rm -rf $(distdir)
-	-rm -f $(distdir).tar $(distdir).tar.gz
-
-realclean: distclean
-
-clobber: distclean
-
-help:
-	@echo
-	@echo "Targets:"
-	@echo "    frotz"
-	@echo "    dfrotz"
-	@echo "    install"
-	@echo "    uninstall"
-	@echo "    clean"
-	@echo "    distclean"
-	@echo
-
+.PHONY: all clean dist dosdist curses ncurses dumb sdl hash help \
+	common_defines curses_defines nosound nosound_helper\
+	$(COMMON_DEFINES) $(CURSES_DEFINES) $(HASH) \
+	blorb_lib common_lib curses_lib dumb_lib \
+	install install_dfrotz install_sfrotz $(SUB_CLEAN)
