@@ -15,8 +15,8 @@ void *my_memmove(void *, const void *, size_t);
 #endif
 
 #ifdef NO_STRDUP
-char *my_strdup(const char *);
-char *my_strndup(const char *, size_t);
+char * __cdecl my_strdup(const char *);
+char * __cdecl my_strndup(const char *, size_t);
 #define strdup	my_strdup
 #define strndup	my_strndup
 #endif

@@ -53,7 +53,7 @@ void *my_memmove(void *dest, const void *src, size_t n)
  * lack strdup(3) and strndup(3).
  *
  */
-char *my_strdup(const char *src)
+char * __cdecl my_strdup(const char *src)
 {
 	char *str;
 	char *p;
@@ -69,7 +69,7 @@ char *my_strdup(const char *src)
 	return str;
 }
 
-char *my_strndup(const char *src, size_t n)
+char * __cdecl my_strndup(const char *src, size_t n)
 {
 	char *str;
 	char *p;
