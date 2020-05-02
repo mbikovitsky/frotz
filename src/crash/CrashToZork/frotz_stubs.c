@@ -22,7 +22,12 @@ Environment:
 #include <ntddk.h>
 #include <windef.h>
 
-#include "..\common\frotz.h"
+#include "..\..\common\frotz.h"
+
+
+#pragma warning(push)
+#pragma warning(disable: 4100)  // unreferenced formal parameter
+
 
 
 //
@@ -39,10 +44,11 @@ INT  os_font_data      (INT iFont, PINT piHeight, PINT piWidth) { return 0; }
 // Sound
 //
 
+VOID os_init_sound         (VOID)                         {}
 VOID os_prepare_sample     (INT a)                        {}
 VOID os_start_sample       (INT a, INT b, INT c, zword d) {}
-VOID os_stop_sample        ()                             {}
-VOID os_finish_with_sample ()                             {}
+VOID os_stop_sample        (INT a)                        {}
+VOID os_finish_with_sample (INT a)                        {}
 VOID os_beep               (INT iVolume)                  {}
 INT  os_speech_output      (CONST zchar * pszString)      { return 0; }
 
@@ -66,3 +72,8 @@ VOID os_reset_screen (VOID) {}
 VOID os_process_arguments (INT iArgc, PSTR apszArgv[]) {}
 VOID os_restart_game      (INT iStage)                 {}
 VOID os_more_prompt       (VOID)                       {}
+VOID os_tick              (VOID)                       {}
+VOID os_quit              (INT a)                      {}
+
+
+#pragma warning(pop)

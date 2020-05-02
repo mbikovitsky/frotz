@@ -1,6 +1,0 @@
-TARGETNAME      =   memfile
-TARGETTYPE      =   DRIVER_LIBRARY
-
-TARGETPATH      =   lib
-
-SOURCES         =   memfile.c

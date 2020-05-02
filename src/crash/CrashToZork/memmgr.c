@@ -5,7 +5,7 @@
 //  
 // This code is in the public domain.
 //----------------------------------------------------------------
-#include <stdio.h>
+#include <ntifs.h>
 #include "memmgr.h"
 
 typedef unsigned long Align;

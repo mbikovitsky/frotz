@@ -1,0 +1,13 @@
+#pragma once
+
+#define MAX_UNDO_SLOTS 500
+#define MAX_FILE_NAME 80
+#define TEXT_BUFFER_SIZE 512
+#define INPUT_BUFFER_SIZE 200
+#define STACK_SIZE 1024
+
+#define NO_BLORB
+#define NO_STRDUP
+#define NO_UCONTEXT_H
+#define NO_EXECINFO_H
+#define DISABLE_FORMATS

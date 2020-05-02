@@ -21,8 +21,8 @@ Environment:
 
 #include <ntddk.h>
 
-#include "..\memfile\memfile.h"
-#include "..\memmgr\memmgr.h"
+#include "memfile.h"
+#include "memmgr.h"
 
 
 //
@@ -61,7 +61,7 @@ DriverEntry(
 Routine Description:
 
 	Driver entry-point.
-    
+	
 Arguments:
 
 	DriverObject - Caller-supplied pointer to a DRIVER_OBJECT structure.
@@ -102,7 +102,7 @@ Unload(
 Routine Description:
 
 	Unloads the driver.
-    
+	
 Arguments:
 
 	DriverObject - Caller-supplied pointer to a DRIVER_OBJECT structure.
@@ -131,7 +131,7 @@ BugCheckCallback(
 Routine Description:
 
 	Bug check callback that begins the game.
-    
+	
 Arguments:
 
 	Buffer - Supplies a pointer to the buffer

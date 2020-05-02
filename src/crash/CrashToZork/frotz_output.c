@@ -24,7 +24,7 @@ Environment:
 
 #include <string.h>
 
-#include "..\common\frotz.h"
+#include "..\..\common\frotz.h"
 
 
 //
@@ -101,9 +101,9 @@ dumb_display_char(
 {
 	g_acScreen[g_nRow][g_nColumn] = cCharacter;
 
-	if (++g_nColumn == h_screen_cols)
+	if (++g_nColumn == z_header.screen_cols)
 	{
-		if (h_screen_rows - 1 == g_nRow)
+		if (z_header.screen_rows - 1 == g_nRow)
 		{
 			--g_nColumn;
 		}
@@ -171,26 +171,26 @@ os_init_screen(VOID)
 	//
 	// Dumber than dumb frotz :)
 	//
-	h_flags &= ~GRAPHICS_FLAG;
-	h_flags &= ~OLD_SOUND_FLAG;
-	h_flags &= ~SOUND_FLAG;
-	h_flags &= ~MOUSE_FLAG;
-	h_flags &= ~COLOUR_FLAG;
-	h_flags &= ~MENU_FLAG;
+	z_header.flags &= ~GRAPHICS_FLAG;
+	z_header.flags &= ~OLD_SOUND_FLAG;
+	z_header.flags &= ~SOUND_FLAG;
+	z_header.flags &= ~MOUSE_FLAG;
+	z_header.flags &= ~COLOUR_FLAG;
+	z_header.flags &= ~MENU_FLAG;
 
-	h_interpreter_number = INTERP_MSDOS;
-	h_interpreter_version = 'F';
+	z_header.interpreter_number = INTERP_MSDOS;
+	z_header.interpreter_version = 'F';
 
-	h_default_foreground = LIGHTGREY_COLOUR;
-	h_default_background = BLUE_COLOUR;
+	z_header.default_foreground = LIGHTGREY_COLOUR;
+	z_header.default_background = BLUE_COLOUR;
 
-	h_screen_cols = SCREEN_COLS;
-	h_screen_rows = SCREEN_ROWS;
+	z_header.screen_cols = SCREEN_COLS;
+	z_header.screen_rows = SCREEN_ROWS;
 
-	h_font_height   = 1;
-	h_font_width    = 1;
-	h_screen_width  = h_screen_cols * h_font_width;
-	h_screen_height = h_screen_rows * h_font_height;
+	z_header.font_height   = 1;
+	z_header.font_width    = 1;
+	z_header.screen_width  = z_header.screen_cols * z_header.font_width;
+	z_header.screen_height = z_header.screen_rows * z_header.font_height;
 }
 
 VOID
@@ -273,8 +273,8 @@ dump_screen(VOID)
 	DbgPrint(SCREEN_SEPARATOR);
 	DbgPrint(SCREEN_SEPARATOR);
 
-	for (nRow = 0; nRow < h_screen_rows; ++nRow)
+	for (nRow = 0; nRow < z_header.screen_rows; ++nRow)
 	{
-		DbgPrint("%.*s\n", h_screen_cols, g_acScreen[nRow]);
+		DbgPrint("%.*s\n", z_header.screen_cols, g_acScreen[nRow]);
 	}
 }

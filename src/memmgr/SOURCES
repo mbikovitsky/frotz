@@ -1,6 +1,0 @@
-TARGETNAME      =   memmgr
-TARGETTYPE      =   DRIVER_LIBRARY
-
-TARGETPATH      =   lib
-
-SOURCES         =   memmgr.c

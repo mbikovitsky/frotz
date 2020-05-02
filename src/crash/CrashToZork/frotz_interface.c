@@ -25,8 +25,8 @@ Environment:
 
 #include <stdarg.h>
 
-#include "..\common\frotz.h"
-#include "..\memfile\memfile.h"
+#include "..\..\common\frotz.h"
+#include "memfile.h"
 
 
 //
@@ -44,6 +44,26 @@ VOID dump_screen(VOID);
 //
 // Functions
 //
+
+bool
+os_repaint_window(
+	int win,
+	int ypos_old,
+	int ypos_new,
+	int xpos,
+	int ysize,
+	int xsize
+)
+{
+	UNREFERENCED_PARAMETER(win);
+	UNREFERENCED_PARAMETER(ypos_old);
+	UNREFERENCED_PARAMETER(ypos_new);
+	UNREFERENCED_PARAMETER(xpos);
+	UNREFERENCED_PARAMETER(ysize);
+	UNREFERENCED_PARAMETER(xsize);
+	
+	return FALSE;
+}
 
 VOID
 os_fatal(
@@ -78,15 +98,17 @@ os_random_seed(VOID)
 	return 2137389909;
 }
 
-INT
+PSTR
 os_read_file_name(
-	PSTR  pszFileName,
 	PCSTR pszDefaultName,
 	INT   iFlag
 )
 {
+	UNREFERENCED_PARAMETER(pszDefaultName);
+	UNREFERENCED_PARAMETER(iFlag);
+	
 	DbgBreakPoint();
-	return FALSE;
+	return NULL;
 }
 
 zchar
@@ -96,6 +118,9 @@ os_read_key(
 )
 {
 	zchar acCharacter[2] = {'\0'};
+
+	UNREFERENCED_PARAMETER(iTimeout);
+	UNREFERENCED_PARAMETER(iShowCursor);
 
 	dump_screen();
 
@@ -113,6 +138,10 @@ os_read_line(
 	INT     iContinued
 )
 {
+	UNREFERENCED_PARAMETER(iTimeout);
+	UNREFERENCED_PARAMETER(iWidth);
+	UNREFERENCED_PARAMETER(iContinued);
+	
 	dump_screen();
 	(VOID)DbgPrompt("", pszBuffer, cchMax);
 	return ZC_RETURN;
@@ -121,16 +150,29 @@ os_read_line(
 VOID
 os_init_setup(VOID)
 {
-	RtlSecureZeroMemory(&f_setup, sizeof(f_setup));
-	f_setup.undo_slots = MAX_UNDO_SLOTS;
-	f_setup.script_cols = 80;
-	f_setup.save_quetzal = 1;
-	f_setup.sound = 1;
-	f_setup.err_report_mode = ERR_DEFAULT_REPORT_MODE;
+	f_setup.format = FORMAT_DISABLED;
 }
 
 FILE *
 os_load_story(VOID)
 {
 	return MemCreateFromBuffer(StoryData, StorySize);
+}
+
+int
+os_storyfile_seek(
+	FILE *	hFile,
+	long	cbOffset, 
+	int		eWhence
+)
+{
+	return MemSeek(hFile, cbOffset, eWhence);
+}
+
+int
+os_storyfile_tell(
+	FILE *	hFile
+)
+{
+	return MemTell(hFile);
 }

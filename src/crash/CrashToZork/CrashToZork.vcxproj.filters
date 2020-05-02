@@ -1,0 +1,120 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <ClCompile Include="story.c">
+      <Filter>Driver</Filter>
+    </ClCompile>
+    <ClCompile Include="driver.c">
+      <Filter>Driver</Filter>
+    </ClCompile>
+    <ClCompile Include="frotz_interface.c">
+      <Filter>Driver</Filter>
+    </ClCompile>
+    <ClCompile Include="frotz_output.c">
+      <Filter>Driver</Filter>
+    </ClCompile>
+    <ClCompile Include="frotz_stubs.c">
+      <Filter>Driver</Filter>
+    </ClCompile>
+    <ClCompile Include="memfile.c">
+      <Filter>Driver</Filter>
+    </ClCompile>
+    <ClCompile Include="memmgr.c">
+      <Filter>Driver</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\common\buffer.c">
+      <Filter>Common</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\common\err.c">
+      <Filter>Common</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\common\fastmem.c">
+      <Filter>Common</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\common\files.c">
+      <Filter>Common</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\common\hotkey.c">
+      <Filter>Common</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\common\input.c">
+      <Filter>Common</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\common\main.c">
+      <Filter>Common</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\common\math.c">
+      <Filter>Common</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\common\object.c">
+      <Filter>Common</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\common\process.c">
+      <Filter>Common</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\common\quetzal.c">
+      <Filter>Common</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\common\random.c">
+      <Filter>Common</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\common\redirect.c">
+      <Filter>Common</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\common\screen.c">
+      <Filter>Common</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\common\sound.c">
+      <Filter>Common</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\common\stream.c">
+      <Filter>Common</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\common\table.c">
+      <Filter>Common</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\common\text.c">
+      <Filter>Common</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\common\variable.c">
+      <Filter>Common</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\common\missing.c">
+      <Filter>Common</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="memfile.h">
+      <Filter>Driver</Filter>
+    </ClInclude>
+    <ClInclude Include="memmgr.h">
+      <Filter>Driver</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\common\frotz.h">
+      <Filter>Common</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\common\missing.h">
+      <Filter>Common</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\common\unused.h">
+      <Filter>Common</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\common\setup.h">
+      <Filter>Common</Filter>
+    </ClInclude>
+    <ClInclude Include="git_hash.h">
+      <Filter>Driver</Filter>
+    </ClInclude>
+    <ClInclude Include="defs.h">
+      <Filter>Driver</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <Filter Include="Driver">
+      <UniqueIdentifier>{144e8ff9-62c8-4338-839e-1a3450371f6e}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Common">
+      <UniqueIdentifier>{f560be7a-e6f6-4b36-a01b-918392245ccc}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+</Project>

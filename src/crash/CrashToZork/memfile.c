@@ -19,7 +19,7 @@ Environment:
 // Headers
 //
 
-#include <windef.h>
+#include <ntifs.h>
 #include <stdio.h>
 
 #include "memfile.h"
@@ -31,10 +31,10 @@ Environment:
 
 typedef struct _MEM_FILE {
 
-    PBYTE  pcBuffer;
-	PBYTE  pcCurrentPos;
-	SIZE_T cbBuffer;
-    
+	PUCHAR	pcBuffer;
+	PUCHAR	pcCurrentPos;
+	SIZE_T	cbBuffer;
+	
 } MEM_FILE, *PMEM_FILE;
 
 
@@ -63,7 +63,7 @@ MemInit(
 Routine Description:
 
 	Initializes the module's global state
-    
+	
 Arguments:
 
 	Allocator - Allocation function
@@ -101,7 +101,7 @@ MemRead(
 Routine Description:
 
 	fread implementation over a MEM_FILE.
-    
+	
 Arguments:
 
 	Destination - Storage location for data.
@@ -147,7 +147,7 @@ MemGetC(
 Routine Description:
 
 	fgetc implementation over a MEM_FILE.
-    
+	
 Arguments:
 
 	File - Pointer to a MEM_FILE.
@@ -179,7 +179,7 @@ MemPutC(
 Routine Description:
 
 	fputc implementation over a MEM_FILE.
-    
+	
 Arguments:
 
 	Char - Character to write.
@@ -213,7 +213,7 @@ MemTell(
 Routine Description:
 
 	ftell implementation over a MEM_FILE.
-    
+	
 Arguments:
 
 	File - Pointer to a MEM_FILE.
@@ -241,7 +241,7 @@ MemSeek(
 Routine Description:
 
 	fseek implementation over a MEM_FILE.
-    
+	
 Arguments:
 
 	File - Pointer to a MEM_FILE.
@@ -298,7 +298,7 @@ MemClose(
 Routine Description:
 
 	fclose implementation over a MEM_FILE.
-    
+	
 Arguments:
 
 	File - Pointer to a MEM_FILE.
@@ -324,7 +324,7 @@ MemError(
 Routine Description:
 
 	ferror implementation over a MEM_FILE.
-    
+	
 Arguments:
 
 	File - Pointer to a MEM_FILE.
@@ -338,6 +338,7 @@ Return Value:
 	//
 	// Error free :)
 	//
+	UNREFERENCED_PARAMETER(File);
 	return 0;
 }
 
@@ -380,7 +381,7 @@ MemUngetC(
 Routine Description:
 
 	ungetc stub.
-    
+	
 Arguments:
 
 	Char - Character to be pushed.
@@ -410,7 +411,7 @@ MemOpen(
 Routine Description:
 
 	fopen implementation over a MEM_FILE.
-    
+	
 Arguments:
 
 	Filename - File name.
@@ -425,7 +426,6 @@ Return Value:
 {
 	PVOID    pvBuffer  = NULL;
 	size_t   cbBuffer  = 0;
-	FILE   * ptMemFile = NULL;
 
 	MemResolver(Filename, Mode, &pvBuffer, &cbBuffer);
 	if (NULL == pvBuffer)
@@ -447,7 +447,7 @@ MemCreateFromBuffer(
 Routine Description:
 
 	Creates a MEM_FILE from a buffer.
-    
+	
 Arguments:
 
 	Buffer - The buffer to use when creating the MEM_FILE.
