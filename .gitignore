@@ -29,8 +29,3 @@ src/test/*rec
 *.qzl
 *.scr
 *.rec
-
-*chk_wxp_x86*
-*fre_wxp_x86*
-lib/
-bin/
